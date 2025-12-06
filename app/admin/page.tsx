@@ -1,4 +1,7 @@
-import { requireAuth } from "@/lib/auth/require-auth";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -8,50 +11,137 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Shield,
   Users,
   Calendar,
   DollarSign,
-  BarChart3,
-  Settings,
+  Loader2,
+  TrendingUp,
 } from "lucide-react";
-import Link from "next/link";
+import { useAuth } from "@/hooks/use-auth";
+import { AdminHeader } from "@/components/admin-header";
 
-export default async function AdminDashboard() {
-  const user = await requireAuth("Admin");
+interface AdminStats {
+  totalUsers: number;
+  totalConsultations: number;
+  totalRevenue: number;
+  totalHealthcareProviders: number;
+  pendingConsultations: number;
+  completedConsultations: number;
+  recentUsers: number;
+  recentConsultations: number;
+  usersByRole: {
+    patients: number;
+    doctors: number;
+    admins: number;
+  };
+}
+
+export default function AdminDashboard() {
+  const router = useRouter();
+  const { user, isLoading: authLoading, isLoggedIn } = useAuth();
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Redirect if not admin
+    if (!authLoading && (!isLoggedIn || user?.role !== "Admin")) {
+      router.push("/unauthorized");
+      return;
+    }
+
+    // Fetch stats if authenticated as admin
+    if (isLoggedIn && user?.role === "Admin") {
+      fetchStats();
+    }
+  }, [authLoading, isLoggedIn, user, router]);
+
+  const fetchStats = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch("/api/admin/stats");
+      if (!response.ok) {
+        throw new Error("Failed to fetch statistics");
+      }
+      const data = await response.json();
+      setStats(data.stats);
+    } catch (err) {
+      console.error("Error fetching admin stats:", err);
+      setError("Failed to load statistics");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-SL", {
+      style: "currency",
+      currency: "SLL",
+      minimumFractionDigits: 0,
+    })
+      .format(amount)
+      .replace("SLL", "Le");
+  };
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center p-4">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-600">Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">{error}</p>
+            <Button onClick={fetchStats}>Retry</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4">
-      <div className="container mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Admin Dashboard
-              </h1>
-              <p className="text-gray-600 mt-2">Welcome, {user.full_name}</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Shield className="h-5 w-5 text-red-600" />
-              <span className="text-sm font-medium text-gray-700">
-                Administrator
-              </span>
-            </div>
-          </div>
-        </div>
+    <div className="p-6">
+      {/* Header */}
+      <AdminHeader
+        title="Dashboard Overview"
+        description={`Welcome back, ${user?.full_name || "Admin"}`}
+      />
 
-        {/* Stats Overview */}
-        <div className="grid md:grid-cols-4 gap-4 mb-8">
+      {/* Stats Overview */}
+      <div className="space-y-6">
+        <div className="grid md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Users</CardDescription>
-              <CardTitle className="text-2xl">0</CardTitle>
+              <CardTitle className="text-2xl">
+                {stats?.totalUsers ?? 0}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center text-sm text-gray-600">
-                <Users className="h-4 w-4 mr-1" />
-                <span>All registered users</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-sm text-gray-600">
+                  <Users className="h-4 w-4 mr-1" />
+                  <span>All registered users</span>
+                </div>
+                {stats && stats.recentUsers > 0 && (
+                  <div className="flex items-center text-xs text-green-600">
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                    <span>+{stats.recentUsers} this week</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -59,12 +149,22 @@ export default async function AdminDashboard() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Consultations</CardDescription>
-              <CardTitle className="text-2xl">0</CardTitle>
+              <CardTitle className="text-2xl">
+                {stats?.totalConsultations ?? 0}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center text-sm text-gray-600">
-                <Calendar className="h-4 w-4 mr-1" />
-                <span>All time consultations</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-sm text-gray-600">
+                  <Calendar className="h-4 w-4 mr-1" />
+                  <span>All time consultations</span>
+                </div>
+                {stats && stats.recentConsultations > 0 && (
+                  <div className="flex items-center text-xs text-green-600">
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                    <span>+{stats.recentConsultations} this week</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -72,7 +172,9 @@ export default async function AdminDashboard() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Revenue</CardDescription>
-              <CardTitle className="text-2xl">Le 0</CardTitle>
+              <CardTitle className="text-2xl">
+                {stats ? formatCurrency(stats.totalRevenue) : "Le 0"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center text-sm text-gray-600">
@@ -85,7 +187,9 @@ export default async function AdminDashboard() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Healthcare Providers</CardDescription>
-              <CardTitle className="text-2xl">0</CardTitle>
+              <CardTitle className="text-2xl">
+                {stats?.totalHealthcareProviders ?? 0}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center text-sm text-gray-600">
@@ -96,100 +200,58 @@ export default async function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Admin Features */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Admin Features</h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Users className="h-8 w-8 text-blue-600 mb-2" />
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>
-                  Manage all users and their roles
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2 mb-4">
-                  <li>• View all users</li>
-                  <li>• Change user roles</li>
-                  <li>• Activate/deactivate users</li>
-                  <li>• View user activity</li>
-                </ul>
-                <Button variant="outline" className="w-full">
-                  Manage Users
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <BarChart3 className="h-8 w-8 text-green-600 mb-2" />
-                <CardTitle>Analytics & Reports</CardTitle>
-                <CardDescription>
-                  View platform statistics and reports
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2 mb-4">
-                  <li>• User growth metrics</li>
-                  <li>• Consultation statistics</li>
-                  <li>• Revenue reports</li>
-                  <li>• Content performance</li>
-                </ul>
-                <Button variant="outline" className="w-full">
-                  View Reports
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Settings className="h-8 w-8 text-purple-600 mb-2" />
-                <CardTitle>System Settings</CardTitle>
-                <CardDescription>Configure platform settings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2 mb-4">
-                  <li>• Manage healthcare providers</li>
-                  <li>• Configure payment methods</li>
-                  <li>• System configuration</li>
-                  <li>• Content moderation</li>
-                </ul>
-                <Button variant="outline" className="w-full">
-                  Settings
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common administrative tasks</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-4">
-              <Button variant="outline" className="justify-start">
-                <Users className="h-4 w-4 mr-2" />
-                Add New Healthcare Provider
-              </Button>
-              <Button variant="outline" className="justify-start">
-                <Shield className="h-4 w-4 mr-2" />
-                Change User Role
-              </Button>
-              <Button variant="outline" className="justify-start">
-                <Calendar className="h-4 w-4 mr-2" />
-                View All Consultations
-              </Button>
-              <Button variant="outline" className="justify-start">
-                <DollarSign className="h-4 w-4 mr-2" />
-                View Payment Reports
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Additional Stats */}
+        {stats && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Platform Insights</CardTitle>
+              <CardDescription>Detailed platform metrics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">
+                    Pending Consultations
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {stats.pendingConsultations}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">
+                    Completed Consultations
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {stats.completedConsultations}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Users by Role</p>
+                  <div className="flex gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500">Patients:</span>{" "}
+                      <span className="font-semibold">
+                        {stats.usersByRole.patients}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Doctors:</span>{" "}
+                      <span className="font-semibold">
+                        {stats.usersByRole.doctors}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Admins:</span>{" "}
+                      <span className="font-semibold">
+                        {stats.usersByRole.admins}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

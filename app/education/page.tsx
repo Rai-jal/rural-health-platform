@@ -1,10 +1,17 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Play,
   Pause,
@@ -21,17 +28,26 @@ import {
   Clock,
   Star,
   Loader2,
-} from "lucide-react"
-import Link from "next/link"
-import { getHealthContent, incrementDownloadCount } from "@/lib/database"
-import type { HealthContent } from "@/lib/supabase"
+} from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/components/ui/toast";
+import {
+  getHealthContent,
+  incrementDownloadCount,
+  type HealthContent,
+} from "@/lib/api/client";
 
 export default function EducationPage() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [playingAudio, setPlayingAudio] = useState<string | null>(null)
-  const [healthContent, setHealthContent] = useState<HealthContent[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter();
+  const { user, isLoading: authLoading, isLoggedIn } = useAuth();
+  const { addToast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [healthContent, setHealthContent] = useState<HealthContent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const categories = [
     { id: "all", name: "All Topics", icon: BookOpen },
@@ -40,50 +56,111 @@ export default function EducationPage() {
     { id: "nutrition", name: "Nutrition", icon: Utensils },
     { id: "hygiene", name: "Hygiene", icon: Shield },
     { id: "family", name: "Family Planning", icon: Users },
-  ]
+  ];
+
+  const loadHealthContent = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const { data, error: apiError } = await getHealthContent({
+        category: selectedCategory !== "all" ? selectedCategory : undefined,
+        search: searchTerm || undefined,
+      });
+      if (apiError) {
+        setError(apiError);
+        return;
+      }
+      setHealthContent(data || []);
+    } catch (error) {
+      console.error("Error loading health content:", error);
+      setError("Failed to load health content");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedCategory, searchTerm]);
 
   useEffect(() => {
-    loadHealthContent()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory, searchTerm])
-
-  const loadHealthContent = async () => {
-    try {
-      setIsLoading(true)
-      const content = await getHealthContent({
-        category: selectedCategory,
-        search: searchTerm || undefined,
-      })
-      setHealthContent(content)
-    } catch (error) {
-      console.error("Error loading health content:", error)
-    } finally {
-      setIsLoading(false)
+    // Redirect to login if not authenticated
+    if (!authLoading && !isLoggedIn) {
+      router.push("/auth/login?redirect=/education");
+      return;
     }
-  }
+
+    // Load content if authenticated
+    if (isLoggedIn) {
+      loadHealthContent();
+    }
+  }, [authLoading, isLoggedIn, router, loadHealthContent]);
 
   const toggleAudio = (contentId: string) => {
     if (playingAudio === contentId) {
-      setPlayingAudio(null)
+      setPlayingAudio(null);
     } else {
-      setPlayingAudio(contentId)
+      setPlayingAudio(contentId);
     }
-  }
+  };
 
   const handleDownload = async (contentId: string) => {
     try {
-      await incrementDownloadCount(contentId)
-      // Update local state to reflect the increment
-      setHealthContent((prev) =>
-        prev.map((content) =>
-          content.id === contentId ? { ...content, download_count: content.download_count + 1 } : content,
-        ),
-      )
-      alert("Content downloaded successfully!")
+      const result = await incrementDownloadCount(contentId);
+      if (result) {
+        // Update local state to reflect the increment
+        setHealthContent((prev) =>
+          prev.map((content) =>
+            content.id === contentId
+              ? { ...content, download_count: result.download_count }
+              : content
+          )
+        );
+        addToast({
+          type: "success",
+          title: "Downloaded",
+          description: "Content downloaded successfully!",
+        });
+      } else {
+        addToast({
+          type: "error",
+          title: "Download Failed",
+          description: "Failed to download content. Please try again.",
+        });
+      }
     } catch (error) {
-      console.error("Error downloading content:", error)
-      alert("Error downloading content. Please try again.")
+      console.error("Error downloading content:", error);
+      addToast({
+        type: "error",
+        title: "Download Error",
+        description: "An error occurred while downloading. Please try again.",
+      });
     }
+  };
+
+  // Show loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error && !isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-600">Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">{error}</p>
+            <Button onClick={loadHealthContent}>Retry</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -98,8 +175,12 @@ export default function EducationPage() {
             </Button>
           </Link>
           <div className="ml-4">
-            <h1 className="text-3xl font-bold text-gray-900">Health Education</h1>
-            <p className="text-gray-600">Learn about health topics in your language</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Health Education
+            </h1>
+            <p className="text-gray-600">
+              Learn about health topics in your language
+            </p>
           </div>
         </div>
 
@@ -120,11 +201,13 @@ export default function EducationPage() {
           {/* Category Filters */}
           <div className="flex flex-wrap gap-2">
             {categories.map((category) => {
-              const Icon = category.icon
+              const Icon = category.icon;
               return (
                 <Button
                   key={category.id}
-                  variant={selectedCategory === category.id ? "default" : "outline"}
+                  variant={
+                    selectedCategory === category.id ? "default" : "outline"
+                  }
                   size="sm"
                   onClick={() => setSelectedCategory(category.id)}
                   className="flex items-center space-x-2"
@@ -132,7 +215,7 @@ export default function EducationPage() {
                   <Icon className="h-4 w-4" />
                   <span>{category.name}</span>
                 </Button>
-              )
+              );
             })}
           </div>
         </div>
@@ -143,9 +226,12 @@ export default function EducationPage() {
             <div className="flex items-center space-x-3">
               <Download className="h-6 w-6 text-blue-600" />
               <div>
-                <p className="font-medium text-blue-900">Offline Access Available</p>
+                <p className="font-medium text-blue-900">
+                  Offline Access Available
+                </p>
                 <p className="text-sm text-blue-700">
-                  Download content to access without internet. Audio content works on any phone via *123*2#
+                  Download content to access without internet. Audio content
+                  works on any phone via *123*2#
                 </p>
               </div>
             </div>
@@ -164,12 +250,19 @@ export default function EducationPage() {
         {!isLoading && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {healthContent.map((content) => (
-              <Card key={content.id} className="hover:shadow-lg transition-shadow">
+              <Card
+                key={content.id}
+                className="hover:shadow-lg transition-shadow"
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <CardTitle className="text-lg mb-2">{content.title}</CardTitle>
-                      <CardDescription className="text-sm">{content.description}</CardDescription>
+                      <CardTitle className="text-lg mb-2">
+                        {content.title}
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        {content.description}
+                      </CardDescription>
                     </div>
                     {content.is_offline_available && (
                       <Badge variant="secondary" className="ml-2">
@@ -193,28 +286,40 @@ export default function EducationPage() {
                         <span>{content.rating}</span>
                       </div>
                     </div>
-                    <span className="text-xs">{content.download_count} downloads</span>
+                    <span className="text-xs">
+                      {content.download_count} downloads
+                    </span>
                   </div>
 
                   {/* Language */}
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-1">Available in:</p>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Available in:
+                    </p>
                     <Badge variant="outline" className="text-xs">
                       {content.language}
                     </Badge>
                   </div>
 
                   {/* Topics */}
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Topics covered:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {content.topics.map((topic) => (
-                        <Badge key={topic} variant="secondary" className="text-xs">
-                          {topic}
-                        </Badge>
-                      ))}
+                  {content.topics && content.topics.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">
+                        Topics covered:
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {content.topics.map((topic) => (
+                          <Badge
+                            key={topic}
+                            variant="secondary"
+                            className="text-xs"
+                          >
+                            {topic}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Audio Player */}
                   {content.content_type === "audio" && (
@@ -222,10 +327,20 @@ export default function EducationPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Volume2 className="h-4 w-4 text-green-600" />
-                          <span className="text-sm font-medium">Audio Available</span>
+                          <span className="text-sm font-medium">
+                            Audio Available
+                          </span>
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => toggleAudio(content.id)}>
-                          {playingAudio === content.id ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => toggleAudio(content.id)}
+                        >
+                          {playingAudio === content.id ? (
+                            <Pause className="h-4 w-4" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
                         </Button>
                       </div>
                       {playingAudio === content.id && (
@@ -233,7 +348,9 @@ export default function EducationPage() {
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div className="bg-green-600 h-2 rounded-full w-1/3"></div>
                           </div>
-                          <p className="text-xs text-gray-600 mt-1">Playing in {content.language}</p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            Playing in {content.language}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -245,7 +362,11 @@ export default function EducationPage() {
                       <BookOpen className="h-4 w-4 mr-2" />
                       Read
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDownload(content.id)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDownload(content.id)}
+                    >
                       <Download className="h-4 w-4 mr-2" />
                       Download
                     </Button>
@@ -260,8 +381,12 @@ export default function EducationPage() {
         {!isLoading && healthContent.length === 0 && (
           <div className="text-center py-12">
             <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">No content found</h3>
-            <p className="text-gray-500">Try adjusting your search or category filter</p>
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">
+              No content found
+            </h3>
+            <p className="text-gray-500">
+              Try adjusting your search or category filter
+            </p>
           </div>
         )}
 
@@ -270,9 +395,12 @@ export default function EducationPage() {
           <CardContent className="p-6">
             <div className="text-center">
               <Volume2 className="h-12 w-12 text-green-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-green-900 mb-2">Access via Voice</h3>
+              <h3 className="text-xl font-bold text-green-900 mb-2">
+                Access via Voice
+              </h3>
               <p className="text-green-700 mb-4">
-                Listen to health education content on any phone, even without internet
+                Listen to health education content on any phone, even without
+                internet
               </p>
               <div className="grid md:grid-cols-2 gap-4 text-sm">
                 <div className="bg-white rounded-lg p-4">
@@ -284,7 +412,8 @@ export default function EducationPage() {
                 <div className="bg-white rounded-lg p-4">
                   <p className="font-semibold mb-2">For SMS Summaries:</p>
                   <p>
-                    Text <strong>HEALTH [TOPIC]</strong> to <strong>1234</strong>
+                    Text <strong>HEALTH [TOPIC]</strong> to{" "}
+                    <strong>1234</strong>
                   </p>
                 </div>
               </div>
@@ -293,5 +422,5 @@ export default function EducationPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

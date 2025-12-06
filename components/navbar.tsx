@@ -15,13 +15,23 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 
 export function Navbar() {
+  const pathname = usePathname();
   const { user, isLoading, isLoggedIn, signOut } = useAuth();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Hide navbar on admin, doctor, and patient dashboard pages (they have their own sidebar)
+  if (
+    pathname?.startsWith("/admin") ||
+    pathname?.startsWith("/doctor") ||
+    pathname?.startsWith("/dashboard")
+  ) {
+    return null;
+  }
 
   const handleSignOut = async () => {
     await signOut();
@@ -67,11 +77,25 @@ export function Navbar() {
           {/* Desktop Navigation */}
           {isLoggedIn && !isLoading && (
             <div className="hidden md:flex items-center space-x-6">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">
-                  Dashboard
-                </Button>
-              </Link>
+              {user?.role === "Admin" ? (
+                <Link href="/admin">
+                  <Button variant="ghost" size="sm">
+                    Dashboard
+                  </Button>
+                </Link>
+              ) : user?.role === "Doctor" ? (
+                <Link href="/doctor">
+                  <Button variant="ghost" size="sm">
+                    Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/dashboard">
+                  <Button variant="ghost" size="sm">
+                    Dashboard
+                  </Button>
+                </Link>
+              )}
 
               {user?.role === "Patient" && (
                 <>
@@ -153,11 +177,25 @@ export function Navbar() {
         {mobileMenuOpen && isLoggedIn && (
           <div className="md:hidden py-4 border-t">
             <div className="space-y-2">
-              <Link href="/dashboard">
-                <Button variant="ghost" className="w-full justify-start">
-                  Dashboard
-                </Button>
-              </Link>
+              {user?.role === "Admin" ? (
+                <Link href="/admin">
+                  <Button variant="ghost" className="w-full justify-start">
+                    Dashboard
+                  </Button>
+                </Link>
+              ) : user?.role === "Doctor" ? (
+                <Link href="/doctor">
+                  <Button variant="ghost" className="w-full justify-start">
+                    Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/dashboard">
+                  <Button variant="ghost" className="w-full justify-start">
+                    Dashboard
+                  </Button>
+                </Link>
+              )}
 
               {user?.role === "Patient" && (
                 <>

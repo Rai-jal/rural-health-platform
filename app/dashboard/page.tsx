@@ -1,7 +1,10 @@
-import { requireAuth } from "@/lib/auth/require-auth";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -17,38 +20,137 @@ import {
   Calendar,
   Heart,
   User,
-  Shield,
-  Stethoscope,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
-export default async function DashboardPage() {
-  const user = await requireAuth();
+interface PatientStats {
+  upcomingConsultations: number;
+  healthContentViewed: number;
+  communityGroups: number;
+  totalPayments: number;
+  totalConsultations: number;
+  recentConsultations: Array<{
+    id: string;
+    scheduled_at: string;
+    consultation_type: string;
+    status: string;
+    cost_leone: number;
+    healthcare_providers: {
+      id: string;
+      full_name: string;
+      specialty: string;
+    };
+  }>;
+}
 
-  // Redirect based on role
-  if (user.role === "Admin") {
-    redirect("/admin");
+export default function DashboardPage() {
+  const router = useRouter();
+  const { user, isLoading: authLoading, isLoggedIn } = useAuth();
+  const [stats, setStats] = useState<PatientStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Redirect based on role
+    if (!authLoading && isLoggedIn) {
+      if (user?.role === "Admin") {
+        router.push("/admin");
+        return;
+      }
+      if (user?.role === "Doctor") {
+        router.push("/doctor");
+        return;
+      }
+    }
+
+    // Redirect to login if not authenticated
+    if (!authLoading && !isLoggedIn) {
+      router.push("/auth/login");
+      return;
+    }
+
+    // Fetch stats if authenticated as patient
+    if (isLoggedIn && user?.role === "Patient") {
+      fetchStats();
+    }
+  }, [authLoading, isLoggedIn, user, router]);
+
+  const fetchStats = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch("/api/patient/stats");
+      if (!response.ok) {
+        throw new Error("Failed to fetch statistics");
+      }
+      const data = await response.json();
+      setStats(data.stats);
+    } catch (err) {
+      console.error("Error fetching patient stats:", err);
+      setError("Failed to load statistics");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-SL", {
+      style: "currency",
+      currency: "SLL",
+      minimumFractionDigits: 0,
+    })
+      .format(amount)
+      .replace("SLL", "Le");
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
-  if (user.role === "Doctor") {
-    redirect("/doctor");
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-600">Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">{error}</p>
+            <Button onClick={fetchStats}>Retry</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   // Patient dashboard
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
-      <div className="container mx-auto max-w-6xl">
+    <div className="p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Welcome back, {user.full_name}!
-              </h1>
-              <p className="text-gray-600 mt-2">Your HealthConnect Dashboard</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <User className="h-5 w-5 text-green-600" />
-              <span className="text-sm font-medium text-gray-700">Patient</span>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Welcome back, {user?.full_name || "Patient"}!
+            </h1>
+            <p className="text-gray-600 mt-2">Your HealthConnect Dashboard</p>
           </div>
         </div>
 
@@ -57,25 +159,33 @@ export default async function DashboardPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Upcoming Consultations</CardDescription>
-              <CardTitle className="text-2xl">0</CardTitle>
+              <CardTitle className="text-2xl">
+                {stats?.upcomingConsultations ?? 0}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Health Content Viewed</CardDescription>
-              <CardTitle className="text-2xl">0</CardTitle>
+              <CardTitle className="text-2xl">
+                {stats?.healthContentViewed ?? 0}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Community Groups</CardDescription>
-              <CardTitle className="text-2xl">0</CardTitle>
+              <CardTitle className="text-2xl">
+                {stats?.communityGroups ?? 0}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Payments</CardDescription>
-              <CardTitle className="text-2xl">Le 0</CardTitle>
+              <CardTitle className="text-2xl">
+                {stats ? formatCurrency(stats.totalPayments) : "Le 0"}
+              </CardTitle>
             </CardHeader>
           </Card>
         </div>
@@ -152,13 +262,59 @@ export default async function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p>No consultations yet</p>
-                <Link href="/consultation">
-                  <Button className="mt-4">Book Your First Consultation</Button>
-                </Link>
-              </div>
+              {stats && stats.recentConsultations.length > 0 ? (
+                <div className="space-y-3">
+                  {stats.recentConsultations.map((consultation) => (
+                    <div
+                      key={consultation.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold">
+                            {consultation.healthcare_providers?.full_name ||
+                              "Healthcare Provider"}
+                          </p>
+                          <Badge variant="outline">
+                            {consultation.consultation_type}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {consultation.healthcare_providers?.specialty} •{" "}
+                          {formatDate(consultation.scheduled_at)}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatCurrency(consultation.cost_leone)}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          consultation.status === "completed"
+                            ? "default"
+                            : consultation.status === "scheduled"
+                            ? "secondary"
+                            : "outline"
+                        }
+                      >
+                        {consultation.status}
+                      </Badge>
+                    </div>
+                  ))}
+                  <Link href="/consultation">
+                    <Button variant="outline" className="w-full mt-4">
+                      View All Consultations
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p>No consultations yet</p>
+                  <Link href="/consultation">
+                    <Button className="mt-4">Book Your First Consultation</Button>
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
 

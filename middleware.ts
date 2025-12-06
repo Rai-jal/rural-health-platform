@@ -52,29 +52,88 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // If user is authenticated and trying to access auth pages, redirect to home
+  // If user is authenticated and trying to access auth pages, redirect to role-specific dashboard
   if (user && (request.nextUrl.pathname === '/auth/login' || request.nextUrl.pathname === '/auth/signup')) {
-    return NextResponse.redirect(new URL('/', request.url))
-  }
-
-  // Role-based route protection
-  if (user) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    const userRole = profile?.role
+    // If profile doesn't exist, allow access to signup/login (might be creating profile)
+    if (profileError || !profile) {
+      // Don't redirect if profile doesn't exist - let them complete signup
+      return NextResponse.next()
+    }
 
-    // Admin routes
-    if (request.nextUrl.pathname.startsWith('/admin') && userRole !== 'Admin') {
-      return NextResponse.redirect(new URL('/unauthorized', request.url))
+    let redirectTo = '/'
+    if (profile.role === 'Admin') {
+      redirectTo = '/admin'
+    } else if (profile.role === 'Doctor') {
+      redirectTo = '/doctor'
+    } else if (profile.role === 'Patient') {
+      redirectTo = '/dashboard'
+    }
+
+    return NextResponse.redirect(new URL(redirectTo, request.url))
+  }
+
+  // Role-based route protection and redirects
+  if (user) {
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    // If profile doesn't exist, redirect to signup to complete profile
+    if (profileError || !profile) {
+      // Allow access to signup page
+      if (request.nextUrl.pathname === '/auth/signup') {
+        return NextResponse.next()
+      }
+      // Redirect to signup if trying to access protected routes
+      if (!isPublicRoute) {
+        return NextResponse.redirect(new URL('/auth/signup', request.url))
+      }
+      return NextResponse.next()
+    }
+
+    const userRole = profile.role
+
+    // Redirect authenticated users from home page to their role-specific dashboard
+    if (request.nextUrl.pathname === '/') {
+      if (userRole === 'Admin') {
+        return NextResponse.redirect(new URL('/admin', request.url))
+      } else if (userRole === 'Doctor') {
+        return NextResponse.redirect(new URL('/doctor', request.url))
+      } else if (userRole === 'Patient') {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      }
+    }
+
+    // Admin routes - protect both pages and API routes
+    if (
+      (request.nextUrl.pathname.startsWith('/admin') ||
+        request.nextUrl.pathname.startsWith('/api/admin')) &&
+      userRole !== 'Admin'
+    ) {
+      if (request.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'Forbidden: Admin access required' },
+          { status: 403 }
+        );
+      }
+      return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
 
     // Doctor routes
-    if (request.nextUrl.pathname.startsWith('/doctor') && userRole !== 'Doctor' && userRole !== 'Admin') {
-      return NextResponse.redirect(new URL('/unauthorized', request.url))
+    if (
+      request.nextUrl.pathname.startsWith('/doctor') &&
+      userRole !== 'Doctor' &&
+      userRole !== 'Admin'
+    ) {
+      return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
   }
 

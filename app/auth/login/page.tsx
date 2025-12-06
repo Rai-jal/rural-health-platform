@@ -40,7 +40,7 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient()
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       })
@@ -51,10 +51,47 @@ export default function LoginPage() {
         return
       }
 
-      // Redirect to the page user was trying to access, or home
-      const redirectTo = searchParams.get('redirect') || '/'
-      router.push(redirectTo)
-      router.refresh()
+      // Fetch user profile to get role
+      if (signInData.user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', signInData.user.id)
+          .single()
+
+        // Check if profile exists
+        if (profileError || !profile) {
+          setError(
+            profileError?.message || 
+            'User profile not found. Please contact support or try signing up again.'
+          )
+          setIsLoading(false)
+          console.error('Profile fetch error:', profileError)
+          return
+        }
+
+        // Determine redirect based on role
+        let redirectTo = searchParams.get('redirect') || '/'
+        
+        // If no specific redirect, go to role-specific dashboard
+        if (!searchParams.get('redirect')) {
+          if (profile.role === 'Admin') {
+            redirectTo = '/admin'
+          } else if (profile.role === 'Doctor') {
+            redirectTo = '/doctor'
+          } else if (profile.role === 'Patient') {
+            redirectTo = '/dashboard'
+          } else {
+            // Default to dashboard if role is not set
+            redirectTo = '/dashboard'
+          }
+        }
+
+        // Small delay to ensure session is set
+        await new Promise(resolve => setTimeout(resolve, 100))
+        router.push(redirectTo)
+        router.refresh()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
       setIsLoading(false)

@@ -1,11 +1,18 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   CreditCard,
   Smartphone,
@@ -17,13 +24,41 @@ import {
   Wallet,
   Clock,
   AlertCircle,
-} from "lucide-react"
-import Link from "next/link"
+  Loader2,
+} from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function PaymentsPage() {
-  const [selectedMethod, setSelectedMethod] = useState<string | null>(null)
-  const [paymentStep, setPaymentStep] = useState(1)
-  const [isProcessing, setIsProcessing] = useState(false)
+  const router = useRouter();
+  const { user, isLoading: authLoading, isLoggedIn } = useAuth();
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [paymentStep, setPaymentStep] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    // Redirect to login if not authenticated
+    if (!authLoading && !isLoggedIn) {
+      router.push("/auth/login?redirect=/payments");
+    }
+  }, [authLoading, isLoggedIn, router]);
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not logged in (will redirect)
+  if (!isLoggedIn) {
+    return null;
+  }
 
   const paymentMethods = [
     {
@@ -71,7 +106,7 @@ export default function PaymentsPage() {
       availability: "Agents in rural areas",
       instructions: "Find nearest agent location",
     },
-  ]
+  ];
 
   const consultationPackages = [
     {
@@ -86,32 +121,47 @@ export default function PaymentsPage() {
       name: "Voice Consultation",
       price: "Le 10,000",
       description: "Phone call consultation with healthcare provider",
-      features: ["15-minute voice call", "Health assessment", "Treatment advice", "Follow-up call"],
+      features: [
+        "15-minute voice call",
+        "Health assessment",
+        "Treatment advice",
+        "Follow-up call",
+      ],
     },
     {
       id: "video",
       name: "Video Consultation",
       price: "Le 15,000",
       description: "Video call consultation with healthcare provider",
-      features: ["20-minute video call", "Visual examination", "Detailed consultation", "Digital prescription"],
+      features: [
+        "20-minute video call",
+        "Visual examination",
+        "Detailed consultation",
+        "Digital prescription",
+      ],
     },
     {
       id: "premium",
       name: "Premium Package",
       price: "Le 25,000",
       description: "Comprehensive healthcare package",
-      features: ["Multiple consultations", "Health monitoring", "24/7 support", "Emergency access"],
+      features: [
+        "Multiple consultations",
+        "Health monitoring",
+        "24/7 support",
+        "Emergency access",
+      ],
     },
-  ]
+  ];
 
   const handlePayment = () => {
-    setIsProcessing(true)
+    setIsProcessing(true);
     // Simulate payment processing
     setTimeout(() => {
-      setIsProcessing(false)
-      setPaymentStep(3)
-    }, 3000)
-  }
+      setIsProcessing(false);
+      setPaymentStep(3);
+    }, 3000);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
@@ -125,8 +175,12 @@ export default function PaymentsPage() {
             </Button>
           </Link>
           <div className="ml-4">
-            <h1 className="text-3xl font-bold text-gray-900">Payment Options</h1>
-            <p className="text-gray-600">Affordable healthcare payments for everyone</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Payment Options
+            </h1>
+            <p className="text-gray-600">
+              Affordable healthcare payments for everyone
+            </p>
           </div>
         </div>
 
@@ -134,9 +188,12 @@ export default function PaymentsPage() {
         {paymentStep === 3 && (
           <div className="text-center py-12">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-6" />
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Payment Successful!</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Payment Successful!
+            </h2>
             <p className="text-lg text-gray-600 mb-8">
-              Your payment has been processed successfully. You can now access healthcare services.
+              Your payment has been processed successfully. You can now access
+              healthcare services.
             </p>
 
             <Card className="max-w-md mx-auto mb-8">
@@ -154,7 +211,9 @@ export default function PaymentsPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Method:</span>
-                  <span>{paymentMethods.find((m) => m.id === selectedMethod)?.name}</span>
+                  <span>
+                    {paymentMethods.find((m) => m.id === selectedMethod)?.name}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Transaction ID:</span>
@@ -182,19 +241,28 @@ export default function PaymentsPage() {
         {isProcessing && (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600 mx-auto mb-6"></div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Processing Payment...</h2>
-            <p className="text-gray-600">Please wait while we process your payment securely.</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Processing Payment...
+            </h2>
+            <p className="text-gray-600">
+              Please wait while we process your payment securely.
+            </p>
           </div>
         )}
 
         {/* Step 1: Choose Package */}
         {paymentStep === 1 && !isProcessing && (
           <div>
-            <h2 className="text-2xl font-bold mb-6 text-center">Choose Your Healthcare Package</h2>
+            <h2 className="text-2xl font-bold mb-6 text-center">
+              Choose Your Healthcare Package
+            </h2>
 
             <div className="grid md:grid-cols-2 gap-6 mb-8">
               {consultationPackages.map((pkg) => (
-                <Card key={pkg.id} className="hover:shadow-lg transition-shadow">
+                <Card
+                  key={pkg.id}
+                  className="hover:shadow-lg transition-shadow"
+                >
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div>
@@ -202,7 +270,9 @@ export default function PaymentsPage() {
                         <CardDescription>{pkg.description}</CardDescription>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-green-600">{pkg.price}</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          {pkg.price}
+                        </p>
                       </div>
                     </div>
                   </CardHeader>
@@ -215,7 +285,10 @@ export default function PaymentsPage() {
                         </li>
                       ))}
                     </ul>
-                    <Button className="w-full" onClick={() => setPaymentStep(2)}>
+                    <Button
+                      className="w-full"
+                      onClick={() => setPaymentStep(2)}
+                    >
                       Select Package
                     </Button>
                   </CardContent>
@@ -229,10 +302,12 @@ export default function PaymentsPage() {
                 <div className="flex items-center space-x-3">
                   <AlertCircle className="h-6 w-6 text-blue-600" />
                   <div>
-                    <p className="font-medium text-blue-900">Affordable Healthcare for All</p>
+                    <p className="font-medium text-blue-900">
+                      Affordable Healthcare for All
+                    </p>
                     <p className="text-sm text-blue-700">
-                      We offer flexible payment options and subsidized rates for low-income families. Contact us for
-                      assistance programs.
+                      We offer flexible payment options and subsidized rates for
+                      low-income families. Contact us for assistance programs.
                     </p>
                   </div>
                 </div>
@@ -244,16 +319,20 @@ export default function PaymentsPage() {
         {/* Step 2: Choose Payment Method */}
         {paymentStep === 2 && !isProcessing && (
           <div>
-            <h2 className="text-2xl font-bold mb-6 text-center">Choose Payment Method</h2>
+            <h2 className="text-2xl font-bold mb-6 text-center">
+              Choose Payment Method
+            </h2>
 
             <div className="grid md:grid-cols-2 gap-6 mb-8">
               {paymentMethods.map((method) => {
-                const Icon = method.icon
+                const Icon = method.icon;
                 return (
                   <Card
                     key={method.id}
                     className={`cursor-pointer transition-all hover:shadow-lg ${
-                      selectedMethod === method.id ? "ring-2 ring-green-600 bg-green-50" : ""
+                      selectedMethod === method.id
+                        ? "ring-2 ring-green-600 bg-green-50"
+                        : ""
                     }`}
                     onClick={() => setSelectedMethod(method.id)}
                   >
@@ -261,8 +340,12 @@ export default function PaymentsPage() {
                       <div className="flex items-center space-x-3">
                         <Icon className="h-8 w-8 text-green-600" />
                         <div>
-                          <CardTitle className="text-lg">{method.name}</CardTitle>
-                          <CardDescription>{method.description}</CardDescription>
+                          <CardTitle className="text-lg">
+                            {method.name}
+                          </CardTitle>
+                          <CardDescription>
+                            {method.description}
+                          </CardDescription>
                         </div>
                       </div>
                     </CardHeader>
@@ -274,13 +357,17 @@ export default function PaymentsPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Availability:</span>
-                          <span className="font-medium">{method.availability}</span>
+                          <span className="font-medium">
+                            {method.availability}
+                          </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-2">{method.instructions}</p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {method.instructions}
+                        </p>
                       </div>
                     </CardContent>
                   </Card>
-                )
+                );
               })}
             </div>
 
@@ -290,11 +377,14 @@ export default function PaymentsPage() {
                 <CardHeader>
                   <CardTitle>Payment Details</CardTitle>
                   <CardDescription>
-                    Complete your payment using {paymentMethods.find((m) => m.id === selectedMethod)?.name}
+                    Complete your payment using{" "}
+                    {paymentMethods.find((m) => m.id === selectedMethod)?.name}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {selectedMethod === "orange" || selectedMethod === "africell" || selectedMethod === "qmoney" ? (
+                  {selectedMethod === "orange" ||
+                  selectedMethod === "africell" ||
+                  selectedMethod === "qmoney" ? (
                     <>
                       <div>
                         <Label htmlFor="phone">Mobile Number</Label>
@@ -302,14 +392,21 @@ export default function PaymentsPage() {
                       </div>
                       <div>
                         <Label htmlFor="pin">Mobile Money PIN</Label>
-                        <Input id="pin" type="password" placeholder="Enter your PIN" />
+                        <Input
+                          id="pin"
+                          type="password"
+                          placeholder="Enter your PIN"
+                        />
                       </div>
                     </>
                   ) : selectedMethod === "bank" ? (
                     <>
                       <div>
                         <Label htmlFor="account">Account Number</Label>
-                        <Input id="account" placeholder="Enter account number" />
+                        <Input
+                          id="account"
+                          placeholder="Enter account number"
+                        />
                       </div>
                       <div>
                         <Label htmlFor="bank">Bank Name</Label>
@@ -325,9 +422,12 @@ export default function PaymentsPage() {
                   ) : (
                     <div className="text-center py-4">
                       <Banknote className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                      <p className="font-medium mb-2">Cash Payment Instructions</p>
+                      <p className="font-medium mb-2">
+                        Cash Payment Instructions
+                      </p>
                       <p className="text-sm text-gray-600 mb-4">
-                        Visit any authorized HealthConnect agent to make your payment
+                        Visit any authorized HealthConnect agent to make your
+                        payment
                       </p>
                       <Button variant="outline" size="sm">
                         Find Nearest Agent
@@ -349,11 +449,21 @@ export default function PaymentsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span>Payment Method:</span>
-                        <span>{paymentMethods.find((m) => m.id === selectedMethod)?.name}</span>
+                        <span>
+                          {
+                            paymentMethods.find((m) => m.id === selectedMethod)
+                              ?.name
+                          }
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>Processing Fee:</span>
-                        <span>{paymentMethods.find((m) => m.id === selectedMethod)?.fee}</span>
+                        <span>
+                          {
+                            paymentMethods.find((m) => m.id === selectedMethod)
+                              ?.fee
+                          }
+                        </span>
                       </div>
                       <div className="flex justify-between font-semibold text-lg border-t pt-2">
                         <span>Total:</span>
@@ -373,7 +483,8 @@ export default function PaymentsPage() {
                   <div>
                     <p className="font-medium text-green-900">Secure Payment</p>
                     <p className="text-sm text-green-700">
-                      All payments are encrypted and secure. We never store your payment information.
+                      All payments are encrypted and secure. We never store your
+                      payment information.
                     </p>
                   </div>
                 </div>
@@ -399,7 +510,9 @@ export default function PaymentsPage() {
         {/* Alternative Payment Methods */}
         {paymentStep === 1 && (
           <div className="mt-12">
-            <h3 className="text-xl font-bold mb-6 text-center">Alternative Access Methods</h3>
+            <h3 className="text-xl font-bold mb-6 text-center">
+              Alternative Access Methods
+            </h3>
 
             <div className="grid md:grid-cols-3 gap-6">
               <Card className="text-center">
@@ -408,7 +521,9 @@ export default function PaymentsPage() {
                   <CardTitle className="text-lg">USSD Payment</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 mb-4">Pay directly from your phone using USSD codes</p>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Pay directly from your phone using USSD codes
+                  </p>
                   <Badge variant="outline" className="mb-2">
                     *123*PAY#
                   </Badge>
@@ -422,11 +537,15 @@ export default function PaymentsPage() {
                   <CardTitle className="text-lg">Pay Later</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 mb-4">Access emergency consultations and pay within 7 days</p>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Access emergency consultations and pay within 7 days
+                  </p>
                   <Badge variant="outline" className="mb-2">
                     Emergency Access
                   </Badge>
-                  <p className="text-xs text-gray-500">For urgent health needs</p>
+                  <p className="text-xs text-gray-500">
+                    For urgent health needs
+                  </p>
                 </CardContent>
               </Card>
 
@@ -442,7 +561,9 @@ export default function PaymentsPage() {
                   <Badge variant="outline" className="mb-2">
                     Financial Aid
                   </Badge>
-                  <p className="text-xs text-gray-500">Income-based assistance</p>
+                  <p className="text-xs text-gray-500">
+                    Income-based assistance
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -450,5 +571,5 @@ export default function PaymentsPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

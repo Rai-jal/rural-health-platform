@@ -41,12 +41,21 @@ export function useAuth(): UseAuthReturn {
         .eq('id', authUser.id)
         .single()
 
-      if (error || !profile) {
+      if (error) {
+        console.error('Error fetching user profile:', error)
         setUser(null)
         setIsLoading(false)
         return
       }
 
+      if (!profile) {
+        console.error('User profile not found for user:', authUser.id)
+        setUser(null)
+        setIsLoading(false)
+        return
+      }
+
+      console.log('User profile loaded:', { id: profile.id, email: profile.email, role: profile.role })
       setUser(profile as UserProfile)
     } catch (error) {
       console.error('Error fetching user:', error)

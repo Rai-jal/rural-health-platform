@@ -1,9 +1,16 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Users,
   MessageSquare,
@@ -16,50 +23,82 @@ import {
   Megaphone,
   BookOpen,
   Loader2,
-} from "lucide-react"
-import Link from "next/link"
-import { getCommunityGroups, getUpcomingEvents } from "@/lib/database"
-import type { CommunityGroup, Event } from "@/lib/supabase"
+} from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  getCommunityGroups,
+  getUpcomingEvents,
+  type CommunityGroup,
+  type Event,
+} from "@/lib/api/client";
 
 export default function CommunityPage() {
-  const [activeTab, setActiveTab] = useState("groups")
-  const [communityGroups, setCommunityGroups] = useState<CommunityGroup[]>([])
-  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter();
+  const { user, isLoading: authLoading, isLoggedIn } = useAuth();
+  const [activeTab, setActiveTab] = useState("groups");
+  const [communityGroups, setCommunityGroups] = useState<CommunityGroup[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadCommunityData()
-  }, [])
+    // Redirect to login if not authenticated
+    if (!authLoading && !isLoggedIn) {
+      router.push("/auth/login?redirect=/community");
+      return;
+    }
+
+    // Load data if authenticated
+    if (isLoggedIn) {
+      loadCommunityData();
+    }
+  }, [authLoading, isLoggedIn, router]);
 
   const loadCommunityData = async () => {
     try {
-      setIsLoading(true)
-      const [groupsData, eventsData] = await Promise.all([getCommunityGroups(), getUpcomingEvents()])
-      setCommunityGroups(groupsData)
-      setUpcomingEvents(eventsData)
+      setIsLoading(true);
+      setError(null);
+      const [groupsResult, eventsResult] = await Promise.all([
+        getCommunityGroups(),
+        getUpcomingEvents(),
+      ]);
+
+      if (groupsResult.error) {
+        setError(groupsResult.error);
+        return;
+      }
+      if (eventsResult.error) {
+        setError(eventsResult.error);
+        return;
+      }
+
+      setCommunityGroups(groupsResult.data || []);
+      setUpcomingEvents(eventsResult.data || []);
     } catch (error) {
-      console.error("Error loading community data:", error)
+      console.error("Error loading community data:", error);
+      setError("Failed to load community data");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffTime = date.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = date.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return "Today"
-    if (diffDays === 1) return "Tomorrow"
-    if (diffDays < 7) return `In ${diffDays} days`
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Tomorrow";
+    if (diffDays < 7) return `In ${diffDays} days`;
 
     return date.toLocaleDateString("en-US", {
       weekday: "long",
       month: "short",
       day: "numeric",
-    })
-  }
+    });
+  };
 
   const recentDiscussions = [
     {
@@ -89,17 +128,37 @@ export default function CommunityPage() {
       lastReply: "3 hours ago",
       category: "Child Care",
     },
-  ]
+  ];
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Loading community data...</p>
+          <p>
+            {authLoading
+              ? "Checking authentication..."
+              : "Loading community data..."}
+          </p>
         </div>
       </div>
-    )
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-red-600">Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">{error}</p>
+            <Button onClick={loadCommunityData}>Retry</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -114,8 +173,12 @@ export default function CommunityPage() {
             </Button>
           </Link>
           <div className="ml-4">
-            <h1 className="text-3xl font-bold text-gray-900">Community Support</h1>
-            <p className="text-gray-600">Connect with other women and health advocates</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Community Support
+            </h1>
+            <p className="text-gray-600">
+              Connect with other women and health advocates
+            </p>
           </div>
         </div>
 
@@ -160,7 +223,10 @@ export default function CommunityPage() {
 
             <div className="grid md:grid-cols-2 gap-6">
               {communityGroups.map((group) => (
-                <Card key={group.id} className="hover:shadow-lg transition-shadow">
+                <Card
+                  key={group.id}
+                  className="hover:shadow-lg transition-shadow"
+                >
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div>
@@ -188,9 +254,12 @@ export default function CommunityPage() {
 
                     {group.healthcare_providers && (
                       <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-sm font-medium text-gray-700 mb-1">Moderated by:</p>
+                        <p className="text-sm font-medium text-gray-700 mb-1">
+                          Moderated by:
+                        </p>
                         <p className="text-sm text-gray-600">
-                          {group.healthcare_providers.full_name} - {group.healthcare_providers.specialty}
+                          {group.healthcare_providers.full_name} -{" "}
+                          {group.healthcare_providers.specialty}
                         </p>
                       </div>
                     )}
@@ -213,19 +282,25 @@ export default function CommunityPage() {
               <CardContent className="p-6">
                 <div className="text-center">
                   <Phone className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-blue-900 mb-2">Join Groups via Phone</h3>
-                  <p className="text-blue-700 mb-4">Participate in support groups even without internet access</p>
+                  <h3 className="text-xl font-bold text-blue-900 mb-2">
+                    Join Groups via Phone
+                  </h3>
+                  <p className="text-blue-700 mb-4">
+                    Participate in support groups even without internet access
+                  </p>
                   <div className="grid md:grid-cols-2 gap-4 text-sm">
                     <div className="bg-white rounded-lg p-4">
                       <p className="font-semibold mb-2">Conference Calls:</p>
                       <p>
-                        Dial <strong>*123*GROUP#</strong> for scheduled group calls
+                        Dial <strong>*123*GROUP#</strong> for scheduled group
+                        calls
                       </p>
                     </div>
                     <div className="bg-white rounded-lg p-4">
                       <p className="font-semibold mb-2">SMS Updates:</p>
                       <p>
-                        Text <strong>JOIN [GROUP]</strong> to <strong>1234</strong>
+                        Text <strong>JOIN [GROUP]</strong> to{" "}
+                        <strong>1234</strong>
                       </p>
                     </div>
                   </div>
@@ -248,7 +323,10 @@ export default function CommunityPage() {
 
             <div className="space-y-6">
               {upcomingEvents.map((event) => (
-                <Card key={event.id} className="hover:shadow-lg transition-shadow">
+                <Card
+                  key={event.id}
+                  className="hover:shadow-lg transition-shadow"
+                >
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
                       <div className="bg-green-100 rounded-lg p-3">
@@ -257,8 +335,12 @@ export default function CommunityPage() {
                       <div className="flex-1">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="text-xl font-semibold mb-2">{event.title}</h3>
-                            <p className="text-gray-600 mb-3">{event.description}</p>
+                            <h3 className="text-xl font-semibold mb-2">
+                              {event.title}
+                            </h3>
+                            <p className="text-gray-600 mb-3">
+                              {event.description}
+                            </p>
                           </div>
                           <Badge variant="outline">{event.event_type}</Badge>
                         </div>
@@ -281,7 +363,10 @@ export default function CommunityPage() {
                         {event.healthcare_providers && (
                           <div className="mb-4">
                             <p className="text-sm text-gray-600">
-                              Organized by: <span className="font-medium">{event.healthcare_providers.full_name}</span>
+                              Organized by:{" "}
+                              <span className="font-medium">
+                                {event.healthcare_providers.full_name}
+                              </span>
                             </p>
                           </div>
                         )}
@@ -314,11 +399,16 @@ export default function CommunityPage() {
 
             <div className="space-y-4">
               {recentDiscussions.map((discussion) => (
-                <Card key={discussion.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                <Card
+                  key={discussion.id}
+                  className="hover:shadow-lg transition-shadow cursor-pointer"
+                >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold mb-2">{discussion.title}</h3>
+                        <h3 className="text-lg font-semibold mb-2">
+                          {discussion.title}
+                        </h3>
                         <div className="flex items-center space-x-4 text-sm text-gray-600 mb-2">
                           <span>by {discussion.author}</span>
                           <span>in {discussion.group}</span>
@@ -354,13 +444,28 @@ export default function CommunityPage() {
             <div className="flex items-start space-x-3">
               <BookOpen className="h-6 w-6 text-yellow-600 mt-1" />
               <div>
-                <h3 className="font-semibold text-yellow-900 mb-2">Community Guidelines</h3>
+                <h3 className="font-semibold text-yellow-900 mb-2">
+                  Community Guidelines
+                </h3>
                 <ul className="text-sm text-yellow-800 space-y-1">
-                  <li>• Be respectful and supportive to all community members</li>
-                  <li>• Share experiences and advice, but remember everyone&apos;s situation is unique</li>
-                  <li>• Protect privacy - don&apos;t share personal medical information publicly</li>
-                  <li>• For medical emergencies, contact healthcare providers immediately</li>
-                  <li>• Report inappropriate content to community moderators</li>
+                  <li>
+                    • Be respectful and supportive to all community members
+                  </li>
+                  <li>
+                    • Share experiences and advice, but remember everyone&apos;s
+                    situation is unique
+                  </li>
+                  <li>
+                    • Protect privacy - don&apos;t share personal medical
+                    information publicly
+                  </li>
+                  <li>
+                    • For medical emergencies, contact healthcare providers
+                    immediately
+                  </li>
+                  <li>
+                    • Report inappropriate content to community moderators
+                  </li>
                 </ul>
               </div>
             </div>
@@ -368,5 +473,5 @@ export default function CommunityPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
