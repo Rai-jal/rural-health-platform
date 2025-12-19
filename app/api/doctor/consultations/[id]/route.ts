@@ -59,7 +59,7 @@ export async function PATCH(
     const body = await request.json();
     const validatedData = updateConsultationSchema.parse(body);
 
-    // Update consultation
+    // Update consultation - ensure it still belongs to this doctor
     const { data: updatedConsultation, error: updateError } = await supabase
       .from("consultations")
       .update({
@@ -67,6 +67,7 @@ export async function PATCH(
         updated_at: new Date().toISOString(),
       })
       .eq("id", params.id)
+      .eq("provider_id", provider.id) // Ensure doctor can only update their own consultations
       .select(
         `
         *,

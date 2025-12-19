@@ -28,25 +28,103 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/components/ui/toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+interface Payment {
+  id: string;
+  amount_leone: number;
+  payment_method: string;
+  payment_status: string;
+  transaction_id?: string;
+  created_at: string;
+  consultations?: {
+    id: string;
+    consultation_type: string;
+    scheduled_at: string;
+    healthcare_providers?: {
+      full_name: string;
+      specialty: string;
+    };
+  };
+}
 
 export default function PaymentsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, isLoggedIn } = useAuth();
+  const { addToast } = useToast();
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [paymentStep, setPaymentStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState<Payment[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [activeTab, setActiveTab] = useState<"make-payment" | "history">("make-payment");
 
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!authLoading && !isLoggedIn) {
       router.push("/auth/login?redirect=/payments");
     }
+
+    // Fetch payment history if authenticated
+    if (isLoggedIn) {
+      fetchPaymentHistory();
+    }
   }, [authLoading, isLoggedIn, router]);
+
+  const fetchPaymentHistory = async () => {
+    try {
+      setIsLoadingHistory(true);
+      const response = await fetch("/api/payments");
+      if (!response.ok) {
+        throw new Error("Failed to fetch payment history");
+      }
+      const data = await response.json();
+      setPaymentHistory(data.data || []);
+    } catch (err) {
+      console.error("Error fetching payment history:", err);
+      addToast({
+        type: "error",
+        title: "Error",
+        description: "Failed to load payment history",
+      });
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-SL", {
+      style: "currency",
+      currency: "SLL",
+      minimumFractionDigits: 0,
+    })
+      .format(amount)
+      .replace("SLL", "Le");
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   // Show loading state while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p>Checking authentication...</p>
@@ -164,26 +242,127 @@ export default function PaymentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-background p-4">
       <div className="container mx-auto max-w-4xl">
         {/* Header */}
-        <div className="flex items-center mb-8">
-          <Link href="/">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center">
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            </Link>
+            <div className="ml-4">
+              <h1 className="text-3xl font-bold text-gray-900">
+                Payments
+              </h1>
+              <p className="text-gray-600">
+                Manage your healthcare payments
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant={activeTab === "make-payment" ? "default" : "outline"}
+              onClick={() => setActiveTab("make-payment")}
+            >
+              Make Payment
             </Button>
-          </Link>
-          <div className="ml-4">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Payment Options
-            </h1>
-            <p className="text-gray-600">
-              Affordable healthcare payments for everyone
-            </p>
+            <Button
+              variant={activeTab === "history" ? "default" : "outline"}
+              onClick={() => setActiveTab("history")}
+            >
+              Payment History
+            </Button>
           </div>
         </div>
 
+        {/* Payment History Tab */}
+        {activeTab === "history" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment History</CardTitle>
+              <CardDescription>
+                View all your past payments and transactions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : paymentHistory.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Service</TableHead>
+                        <TableHead>Provider</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Transaction ID</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paymentHistory.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-medium">
+                            {formatDate(payment.created_at)}
+                          </TableCell>
+                          <TableCell>
+                            {payment.consultations?.consultation_type || "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {payment.consultations?.healthcare_providers?.full_name || "N/A"}
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            {formatCurrency(payment.amount_leone)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {payment.payment_method}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                payment.payment_status === "completed"
+                                  ? "default"
+                                  : payment.payment_status === "pending"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                            >
+                              {payment.payment_status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {payment.transaction_id || "N/A"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <CreditCard className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-600 mb-2">No payment history found</p>
+                  <p className="text-sm text-gray-500">
+                    Your payment history will appear here once you make a payment
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Make Payment Tab */}
+        {activeTab === "make-payment" && (
+          <>
         {/* Payment Success */}
         {paymentStep === 3 && (
           <div className="text-center py-12">
@@ -436,7 +615,7 @@ export default function PaymentsPage() {
                   )}
 
                   {/* Payment Summary */}
-                  <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="bg-muted/50 rounded-lg p-4">
                     <h4 className="font-semibold mb-3">Payment Summary</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
@@ -568,6 +747,8 @@ export default function PaymentsPage() {
               </Card>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     </div>

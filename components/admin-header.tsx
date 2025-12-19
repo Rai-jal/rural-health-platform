@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
 import { useState, useEffect } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface AdminHeaderProps {
   title: string;
@@ -53,17 +54,20 @@ export function AdminHeader({ title, description }: AdminHeaderProps) {
           variant="ghost"
           size="sm"
           onClick={handleToggle}
-          className="hidden lg:flex text-gray-700 hover:bg-gray-200"
+          className="hidden lg:flex"
           title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           <Menu className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+          <h1 className="text-3xl font-bold text-foreground">{title}</h1>
           {description && (
-            <p className="text-gray-600 mt-1">{description}</p>
+            <p className="text-muted-foreground mt-1">{description}</p>
           )}
         </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
       </div>
     </div>
   );

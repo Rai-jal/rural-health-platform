@@ -1,41 +1,56 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
+import { paymentGateway } from "@/lib/payment/gateway";
 
 // POST - Payment webhook handler
 // This endpoint receives callbacks from payment gateways
 export async function POST(request: Request) {
   try {
-    // TODO: Verify webhook signature from payment gateway
-    // This is critical for security - never trust webhooks without verification
-
     const body = await request.json();
-    const supabase = await createClient();
+    const headersList = headers();
+    const paymentMethod = headersList.get("x-payment-method") || "orange_money"; // Default
+    
+    // Verify webhook signature from payment gateway
+    // TODO: Implement signature verification based on payment gateway
+    // This is critical for security - never trust webhooks without verification
+    // Example:
+    // const signature = headersList.get("x-signature");
+    // const isValid = await verifyWebhookSignature(body, signature, paymentMethod);
+    // if (!isValid) {
+    //   return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    // }
 
-    // Extract payment information from webhook
-    const {
-      transaction_id,
-      payment_status,
-      amount,
-      // Add other fields based on your payment gateway
-    } = body;
+    // Process webhook through payment gateway service
+    const verification = await paymentGateway.handleWebhook(body, paymentMethod);
 
-    if (!transaction_id) {
+    if (!verification.verified) {
       return NextResponse.json(
-        { error: "Transaction ID required" },
+        { error: "Webhook verification failed" },
         { status: 400 }
       );
     }
+
+    const supabase = await createClient();
 
     // Update payment status
     const { data: payment, error: updateError } = await supabase
       .from("payments")
       .update({
-        payment_status: payment_status || "completed",
+        payment_status: verification.status,
         updated_at: new Date().toISOString(),
       })
-      .eq("transaction_id", transaction_id)
-      .select()
+      .eq("transaction_id", verification.transactionId)
+      .select(
+        `
+        *,
+        consultations (
+          id,
+          status,
+          user_id
+        )
+      `
+      )
       .single();
 
     if (updateError) {
@@ -46,12 +61,28 @@ export async function POST(request: Request) {
       );
     }
 
-    // If payment completed, you might want to:
-    // - Send confirmation email/SMS
-    // - Update consultation status
-    // - Trigger notifications
+    // If payment completed, update consultation status and send notifications
+    if (verification.status === "completed" && payment) {
+      // Update consultation status to confirmed
+      await supabase
+        .from("consultations")
+        .update({
+          status: "scheduled",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payment.consultation_id);
 
-    return NextResponse.json({ message: "Webhook processed", data: payment });
+      // TODO: Send confirmation email/SMS
+      // TODO: Trigger notifications
+      // Example:
+      // await sendPaymentConfirmationSMS(payment.consultations?.user_id);
+    }
+
+    return NextResponse.json({ 
+      message: "Webhook processed successfully", 
+      data: payment,
+      verification 
+    });
   } catch (error) {
     console.error("Webhook error:", error);
     return NextResponse.json(

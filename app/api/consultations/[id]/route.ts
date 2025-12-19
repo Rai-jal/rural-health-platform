@@ -55,12 +55,19 @@ export async function GET(
     }
 
     if (profile.role === "Doctor") {
-      // Doctors can only see their own consultations
-      // This would need provider_id check - simplified for now
-      // In production, you'd link doctors to healthcare_providers table
+      // Get doctor's provider ID
+      const { data: provider } = await supabase
+        .from("healthcare_providers")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!provider || consultation.provider_id !== provider.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
-    return NextResponse.json({ data: consultation });
+    return NextResponse.json({ consultation });
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(
@@ -96,6 +103,37 @@ export async function PATCH(
   try {
     const body = await request.json();
     const supabase = await createClient();
+
+    // If doctor, verify they own this consultation
+    if (profile.role === "Doctor") {
+      const { data: provider } = await supabase
+        .from("healthcare_providers")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!provider) {
+        return NextResponse.json(
+          { error: "Doctor profile not found" },
+          { status: 404 }
+        );
+      }
+
+      // Verify consultation belongs to this doctor
+      const { data: existingConsultation } = await supabase
+        .from("consultations")
+        .select("provider_id")
+        .eq("id", params.id)
+        .eq("provider_id", provider.id)
+        .single();
+
+      if (!existingConsultation) {
+        return NextResponse.json(
+          { error: "Consultation not found or access denied" },
+          { status: 404 }
+        );
+      }
+    }
 
     // Validate update data
     const updateData: {
@@ -148,7 +186,7 @@ export async function PATCH(
       );
     }
 
-    return NextResponse.json({ data: consultation });
+    return NextResponse.json({ consultation });
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(

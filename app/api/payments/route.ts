@@ -122,15 +122,35 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate transaction ID
-    const transactionId = `TXN${Date.now()}${Math.random()
-      .toString(36)
-      .substr(2, 9)
-      .toUpperCase()}`;
+    // Import payment gateway service
+    const { paymentGateway } = await import("@/lib/payment/gateway");
 
-    // Create payment record
-    // Note: In production, you'd integrate with payment gateway here
-    // For now, we'll create the record with "pending" status
+    // Initiate payment through gateway
+    // The gateway will generate its own transaction ID
+    const gatewayResponse = await paymentGateway.initiatePayment({
+      amount: validatedData.amount_leone,
+      phoneNumber: body.phone_number || user.phone_number, // Use provided or user's phone
+      paymentMethod: validatedData.payment_method as any,
+      consultationId: validatedData.consultation_id,
+      userId: user.id,
+      description: `Consultation payment - ${consultation.consultation_type || "Consultation"}`,
+    });
+
+    // Check if gateway initiation was successful
+    if (!gatewayResponse.success) {
+      return NextResponse.json(
+        { 
+          error: gatewayResponse.message || "Failed to initiate payment",
+          gateway: {
+            success: false,
+            message: gatewayResponse.message,
+          }
+        },
+        { status: 400 }
+      );
+    }
+
+    // Create payment record with gateway transaction ID
     const { data: payment, error: paymentError } = await supabase
       .from("payments")
       .insert([
@@ -139,9 +159,9 @@ export async function POST(request: Request) {
           user_id: user.id,
           amount_leone: validatedData.amount_leone,
           payment_method: validatedData.payment_method,
-          payment_provider: validatedData.payment_provider,
-          payment_status: "pending", // Will be updated by webhook
-          transaction_id: transactionId,
+          payment_provider: validatedData.payment_provider || validatedData.payment_method,
+          payment_status: gatewayResponse.status,
+          transaction_id: gatewayResponse.transactionId,
         },
       ])
       .select(
@@ -159,20 +179,21 @@ export async function POST(request: Request) {
     if (paymentError) {
       console.error("Database error:", paymentError);
       return NextResponse.json(
-        { error: "Failed to create payment" },
+        { error: "Failed to create payment record" },
         { status: 500 }
       );
     }
 
-    // TODO: Integrate with payment gateway here
-    // For now, we'll simulate successful payment
-    // In production, this would call the payment gateway API
-    // and update status via webhook
-
+    // Return payment with gateway response
     return NextResponse.json(
       {
         data: payment,
-        message: "Payment initiated. Status will be updated via webhook.",
+        gateway: {
+          success: gatewayResponse.success,
+          message: gatewayResponse.message,
+          paymentInstructions: gatewayResponse.paymentInstructions,
+        },
+        message: gatewayResponse.message,
       },
       { status: 201 }
     );

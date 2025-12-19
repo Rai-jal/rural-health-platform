@@ -41,6 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { TableSkeleton } from "@/components/loading-skeleton";
 
 interface User {
   id: string;
@@ -58,6 +59,7 @@ export default function UserManagementPage() {
   const { addToast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -79,18 +81,22 @@ export default function UserManagementPage() {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const response = await fetch("/api/admin/users");
       if (!response.ok) {
-        throw new Error("Failed to fetch users");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch users");
       }
       const data = await response.json();
       setUsers(data.users || []);
     } catch (err) {
       console.error("Error fetching users:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to load users";
+      setError(errorMessage);
       addToast({
         type: "error",
         title: "Error",
-        description: "Failed to load users",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -199,11 +205,39 @@ export default function UserManagementPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p>Loading users...</p>
-        </div>
+      <div className="p-6">
+        <AdminHeader
+          title="User Management"
+          description="Manage all users, roles, and permissions"
+        />
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>All Users</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TableSkeleton rows={5} />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error && users.length === 0) {
+    return (
+      <div className="p-6">
+        <AdminHeader
+          title="User Management"
+          description="Manage all users, roles, and permissions"
+        />
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-red-600">Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4">{error}</p>
+            <Button onClick={fetchUsers}>Retry</Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -220,7 +254,7 @@ export default function UserManagementPage() {
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search users by name or email..."
                 value={searchTerm}
@@ -229,7 +263,7 @@ export default function UserManagementPage() {
               />
             </div>
             <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 text-gray-400" />
+              <Filter className="h-4 w-4 text-muted-foreground" />
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
@@ -269,8 +303,8 @@ export default function UserManagementPage() {
               {filteredUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">
-                    <Users className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-500">No users found</p>
+                    <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No users found</p>
                   </TableCell>
                 </TableRow>
               ) : (

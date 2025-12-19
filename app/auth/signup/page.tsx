@@ -84,11 +84,11 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-4">
-              <CheckCircle className="h-10 w-10 text-green-600" />
+              <CheckCircle className="h-10 w-10 text-primary" />
             </div>
             <CardTitle className="text-2xl">Account Created!</CardTitle>
             <CardDescription>Redirecting to login...</CardDescription>
@@ -99,11 +99,11 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
-            <Heart className="h-10 w-10 text-green-600" />
+            <Heart className="h-10 w-10 text-primary" />
           </div>
           <CardTitle className="text-2xl">Create Account</CardTitle>
           <CardDescription>Join HealthConnect to access healthcare services</CardDescription>
@@ -200,8 +200,8 @@ export default function SignupPage() {
           </form>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-gray-600">Already have an account? </span>
-            <Link href="/auth/login" className="text-green-600 hover:underline font-medium">
+            <span className="text-muted-foreground">Already have an account? </span>
+            <Link href="/auth/login" className="text-primary hover:underline font-medium">
               Sign in
             </Link>
           </div>

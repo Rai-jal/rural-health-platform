@@ -42,15 +42,15 @@ export default function PatientDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    <div className="min-h-screen bg-background">
       <Navigation />
 
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Patient Dashboard
           </h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Welcome, {user.full_name}! Manage your healthcare services here.
           </p>
         </div>
@@ -63,7 +63,7 @@ export default function PatientDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-green-600">0</div>
-              <p className="text-sm text-gray-600 mt-2">No upcoming appointments</p>
+              <p className="text-sm text-muted-foreground mt-2">No upcoming appointments</p>
             </CardContent>
           </Card>
 
@@ -73,7 +73,7 @@ export default function PatientDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-600">0</div>
-              <p className="text-sm text-gray-600 mt-2">Start learning today</p>
+              <p className="text-sm text-muted-foreground mt-2">Start learning today</p>
             </CardContent>
           </Card>
 
@@ -83,7 +83,7 @@ export default function PatientDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-purple-600">0</div>
-              <p className="text-sm text-gray-600 mt-2">Join a group</p>
+              <p className="text-sm text-muted-foreground mt-2">Join a group</p>
             </CardContent>
           </Card>
         </div>
@@ -168,7 +168,7 @@ export default function PatientDashboard() {
                 <Phone className="h-5 w-5 text-green-600 mt-1" />
                 <div>
                   <h4 className="font-semibold">Book Consultations</h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Schedule video, voice, or SMS consultations with healthcare providers
                   </p>
                 </div>
@@ -177,7 +177,7 @@ export default function PatientDashboard() {
                 <BookOpen className="h-5 w-5 text-green-600 mt-1" />
                 <div>
                   <h4 className="font-semibold">Access Health Education</h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Learn about health topics in your preferred language
                   </p>
                 </div>
@@ -186,7 +186,7 @@ export default function PatientDashboard() {
                 <Users className="h-5 w-5 text-green-600 mt-1" />
                 <div>
                   <h4 className="font-semibold">Join Community Groups</h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Connect with other patients and share experiences
                   </p>
                 </div>
@@ -195,7 +195,7 @@ export default function PatientDashboard() {
                 <CreditCard className="h-5 w-5 text-green-600 mt-1" />
                 <div>
                   <h4 className="font-semibold">Manage Payments</h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     View payment history and make payments securely
                   </p>
                 </div>

@@ -119,7 +119,7 @@ export default function DoctorDashboard() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-background">
       <DoctorHeader
         title="Dashboard Overview"
         description={`Welcome back, Dr. ${user?.full_name || "Doctor"}`}
@@ -227,7 +227,7 @@ export default function DoctorDashboard() {
                 {stats.upcomingConsultations.map((consultation) => (
                   <div
                     key={consultation.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">

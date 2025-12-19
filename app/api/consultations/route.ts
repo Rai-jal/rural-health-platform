@@ -47,11 +47,11 @@ export async function GET() {
     if (profile.role === "Patient") {
       query = query.eq("user_id", user.id);
     } else if (profile.role === "Doctor") {
-      // Get provider ID from users table (if doctor has provider profile)
+      // Get provider ID using user_id (correct relationship)
       const { data: provider } = await supabase
         .from("healthcare_providers")
         .select("id")
-        .eq("id", user.id) // This might need adjustment based on your schema
+        .eq("user_id", user.id)
         .single();
 
       if (provider) {

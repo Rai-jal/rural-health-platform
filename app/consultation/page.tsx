@@ -47,6 +47,12 @@ export default function ConsultationPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [doctors, setDoctors] = useState<HealthcareProvider[]>([]);
+  const [paymentInstructions, setPaymentInstructions] = useState<string | null>(
+    null
+  );
+  const [paymentTransactionId, setPaymentTransactionId] = useState<
+    string | null
+  >(null);
   const [formData, setFormData] = useState({
     symptoms: "",
     language: "English",
@@ -95,14 +101,33 @@ export default function ConsultationPage() {
   const loadDoctors = async () => {
     try {
       setIsLoading(true);
+      setError(null);
+      // Fetch all providers (not just available ones) to show all real data
       const { data, error: apiError } = await getHealthcareProviders({
-        available: true,
+        // Remove available filter to show all providers from database
+        // Users can see which ones are available via the UI
       });
       if (apiError) {
+        console.error("API Error:", apiError);
         setError(apiError);
         return;
       }
-      setDoctors(data || []);
+      // Filter to show available providers first, but include all
+      const providers = data || [];
+      
+      // Debug: Log all provider names to help identify issues
+      console.log(`Fetched ${providers.length} healthcare providers:`, 
+        providers.map(p => ({ name: p.full_name, available: p.is_available, id: p.id }))
+      );
+      
+      // Sort: available first, then by rating
+      const sortedProviders = providers.sort((a, b) => {
+        if (a.is_available && !b.is_available) return -1;
+        if (!a.is_available && b.is_available) return 1;
+        return (b.rating || 0) - (a.rating || 0);
+      });
+      setDoctors(sortedProviders);
+      console.log(`Loaded ${sortedProviders.length} healthcare providers`);
     } catch (error) {
       console.error("Error loading doctors:", error);
       setError("Failed to load healthcare providers");
@@ -149,17 +174,40 @@ export default function ConsultationPage() {
         throw new Error(consultationError || "Failed to create consultation");
       }
 
-      // Create payment record via API
-      const { error: paymentError } = await createPayment({
-        consultation_id: consultation.id,
-        amount_leone: consultationType.price,
-        payment_method: "mobile_money", // Default for demo
-        payment_provider: "orange_money",
+      // Create payment record via API (with gateway integration)
+      const paymentResponse = await fetch("/api/payments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          consultation_id: consultation.id,
+          amount_leone: consultationType.price,
+          payment_method: "orange_money", // Default - can be selected by user
+          payment_provider: "orange_money",
+          phone_number: user.phone_number, // For mobile money payments
+        }),
       });
 
-      if (paymentError) {
+      if (!paymentResponse.ok) {
+        const paymentError = await paymentResponse.json();
         console.error("Payment creation error:", paymentError);
         // Don't fail the booking if payment creation fails - it can be retried
+        // Consultation is still created, payment can be completed later
+        setError(
+          `Consultation booked, but payment setup failed: ${
+            paymentError.error || "Unknown error"
+          }. You can complete payment later.`
+        );
+      } else {
+        const paymentData = await paymentResponse.json();
+        // Store payment instructions if provided
+        if (paymentData.gateway?.paymentInstructions) {
+          setPaymentInstructions(paymentData.gateway.paymentInstructions);
+        }
+        if (paymentData.data?.transaction_id) {
+          setPaymentTransactionId(paymentData.data.transaction_id);
+        }
       }
 
       setIsBooked(true);
@@ -178,7 +226,7 @@ export default function ConsultationPage() {
   // Show loading state
   if (authLoading || (isLoading && bookingStep === 1)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p>
@@ -215,14 +263,14 @@ export default function ConsultationPage() {
     );
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
+      <div className="min-h-screen bg-background p-4">
         <div className="container mx-auto max-w-2xl">
           <div className="text-center py-12">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-6" />
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            <h1 className="text-3xl font-bold text-foreground mb-4">
               Consultation Booked!
             </h1>
-            <p className="text-lg text-gray-600 mb-8">
+            <p className="text-lg text-muted-foreground mb-8">
               Your consultation has been successfully scheduled. You will
               receive confirmation via SMS.
             </p>
@@ -253,13 +301,44 @@ export default function ConsultationPage() {
               </CardContent>
             </Card>
 
+            {/* Payment Instructions */}
+            {paymentInstructions && (
+              <Card className="bg-primary/10 border-primary/20 mb-6">
+                <CardHeader>
+                  <CardTitle className="text-foreground">
+                    Payment Instructions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-foreground mb-2 font-medium">
+                    {paymentInstructions}
+                  </p>
+                  {paymentTransactionId && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Transaction ID:{" "}
+                      <span className="font-mono">{paymentTransactionId}</span>
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Your consultation is confirmed. Complete payment to finalize
+                    your appointment.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-foreground">
                 <strong>What&apos;s Next:</strong>
               </p>
-              <ul className="text-sm text-gray-600 space-y-2 text-left max-w-md mx-auto">
+              <ul className="text-sm text-muted-foreground space-y-2 text-left max-w-md mx-auto">
+                <li>
+                  •{" "}
+                  {paymentInstructions
+                    ? "Complete payment using the instructions above"
+                    : "Payment instructions will be sent via SMS"}
+                </li>
                 <li>• You&apos;ll receive an SMS confirmation shortly</li>
-                <li>• Payment instructions will be sent via SMS</li>
                 <li>
                   • A reminder will be sent 1 hour before your appointment
                 </li>
@@ -285,7 +364,7 @@ export default function ConsultationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-background p-4">
       <div className="container mx-auto max-w-4xl">
         {/* Header */}
         <div className="flex items-center mb-8">
@@ -296,10 +375,10 @@ export default function ConsultationPage() {
             </Button>
           </Link>
           <div className="ml-4">
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-foreground">
               Book a Consultation
             </h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Connect with healthcare providers from anywhere
             </p>
           </div>
@@ -310,31 +389,31 @@ export default function ConsultationPage() {
           <div className="flex items-center space-x-4">
             <div
               className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                bookingStep >= 1 ? "bg-green-600 text-white" : "bg-gray-200"
+                bookingStep >= 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
               }`}
             >
               1
             </div>
             <div
               className={`h-1 w-16 ${
-                bookingStep >= 2 ? "bg-green-600" : "bg-gray-200"
+                bookingStep >= 2 ? "bg-primary" : "bg-muted"
               }`}
             ></div>
             <div
               className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                bookingStep >= 2 ? "bg-green-600 text-white" : "bg-gray-200"
+                bookingStep >= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
               }`}
             >
               2
             </div>
             <div
               className={`h-1 w-16 ${
-                bookingStep >= 3 ? "bg-green-600" : "bg-gray-200"
+                bookingStep >= 3 ? "bg-primary" : "bg-muted"
               }`}
             ></div>
             <div
               className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                bookingStep >= 3 ? "bg-green-600 text-white" : "bg-gray-200"
+                bookingStep >= 3 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
               }`}
             >
               3
@@ -371,7 +450,7 @@ export default function ConsultationPage() {
                         <p className="text-2xl font-bold text-green-600">
                           Le {type.price.toLocaleString()}
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-muted-foreground">
                           {type.requirements}
                         </p>
                       </div>
@@ -385,12 +464,12 @@ export default function ConsultationPage() {
             <Card className="bg-blue-50 border-blue-200 mb-6">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
-                  <Volume2 className="h-6 w-6 text-blue-600" />
+                  <Volume2 className="h-6 w-6 text-primary" />
                   <div>
-                    <p className="font-medium text-blue-900">
+                    <p className="font-medium text-foreground">
                       Voice Navigation Available
                     </p>
-                    <p className="text-sm text-blue-700">
+                    <p className="text-sm text-muted-foreground">
                       Call *123*1# to book consultations using voice commands in
                       your local language
                     </p>
@@ -417,68 +496,109 @@ export default function ConsultationPage() {
             <h2 className="text-2xl font-bold mb-6 text-center">
               Choose Your Healthcare Provider
             </h2>
-            <div className="space-y-4 mb-8">
-              {doctors.map((doctor) => (
-                <Card
-                  key={doctor.id}
-                  className={`cursor-pointer transition-all hover:shadow-lg ${
-                    selectedDoctor === doctor.id
-                      ? "ring-2 ring-green-600 bg-green-50"
-                      : ""
-                  }`}
-                  onClick={() => setSelectedDoctor(doctor.id)}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                        <User className="h-8 w-8 text-green-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="text-xl font-semibold">
-                              {doctor.full_name}
-                            </h3>
-                            <p className="text-gray-600">{doctor.specialty}</p>
-                            <p className="text-sm text-gray-500">
-                              {doctor.experience_years} years experience
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <div className="flex items-center space-x-1 mb-2">
-                              <Heart className="h-4 w-4 text-red-500 fill-current" />
-                              <span className="font-semibold">
-                                {doctor.rating}
-                              </span>
+            {doctors.length === 0 ? (
+              <div className="text-center py-12">
+                <User className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-lg text-muted-foreground mb-2">
+                  No healthcare providers found
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Please contact support or try again later.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4 mb-8">
+                {doctors.map((doctor) => (
+                  <Card
+                    key={doctor.id}
+                    className={`cursor-pointer transition-all hover:shadow-lg ${
+                      selectedDoctor === doctor.id
+                        ? "ring-2 ring-primary bg-primary/10"
+                        : ""
+                    } ${!doctor.is_available ? "opacity-60" : ""}`}
+                    onClick={() => {
+                      if (doctor.is_available) {
+                        setSelectedDoctor(doctor.id);
+                      }
+                    }}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-start space-x-4">
+                        <div
+                          className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                            doctor.is_available ? "bg-primary/20" : "bg-muted"
+                          }`}
+                        >
+                          <User
+                            className={`h-8 w-8 ${
+                              doctor.is_available
+                                ? "text-primary"
+                                : "text-muted-foreground"
+                            }`}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="text-xl font-semibold">
+                                {doctor.full_name}
+                              </h3>
+                              <p className="text-muted-foreground">
+                                {doctor.specialty}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {doctor.experience_years || 0} years experience
+                              </p>
                             </div>
-                            <Badge variant="outline" className="text-green-600">
-                              <Clock className="h-3 w-3 mr-1" />
-                              Available
-                            </Badge>
+                            <div className="text-right">
+                              <div className="flex items-center space-x-1 mb-2">
+                                <Heart className="h-4 w-4 text-red-500 fill-current" />
+                                <span className="font-semibold">
+                                  {doctor.rating}
+                                </span>
+                              </div>
+                              {doctor.is_available ? (
+                                <Badge
+                                  variant="outline"
+                                  className="text-primary border-primary"
+                                >
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Available
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="text-muted-foreground"
+                                >
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  Unavailable
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="mt-3">
-                          <p className="text-sm text-gray-600 mb-2">
-                            Languages:
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {doctor.languages.map((lang) => (
-                              <Badge
-                                key={lang}
-                                variant="secondary"
-                                className="text-xs"
-                              >
-                                {lang}
-                              </Badge>
-                            ))}
+                          <div className="mt-3">
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Languages:
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {doctor.languages.map((lang) => (
+                                <Badge
+                                  key={lang}
+                                  variant="secondary"
+                                  className="text-xs"
+                                >
+                                  {lang}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
 
             <div className="flex justify-center space-x-4">
               <Button variant="outline" onClick={() => setBookingStep(1)}>
@@ -486,7 +606,10 @@ export default function ConsultationPage() {
               </Button>
               <Button
                 onClick={() => setBookingStep(3)}
-                disabled={!selectedDoctor}
+                disabled={
+                  !selectedDoctor ||
+                  !doctors.find((d) => d.id === selectedDoctor)?.is_available
+                }
                 size="lg"
               >
                 Continue to Booking Details
@@ -609,7 +732,7 @@ export default function ConsultationPage() {
                 </Button>
               </div>
 
-              <p className="text-sm text-gray-600 mt-4">
+              <p className="text-sm text-muted-foreground mt-4">
                 You will receive SMS confirmation and payment instructions after
                 booking
               </p>

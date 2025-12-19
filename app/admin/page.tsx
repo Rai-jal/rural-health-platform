@@ -101,7 +101,7 @@ export default function AdminDashboard() {
       <div className="flex h-full items-center justify-center p-4">
         <Card className="max-w-md">
           <CardHeader>
-            <CardTitle className="text-red-600">Error</CardTitle>
+            <CardTitle className="text-destructive">Error</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="mb-4">{error}</p>
@@ -113,11 +113,10 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-background">
       {/* Header */}
       <AdminHeader
-        title="Dashboard Overview"
-        description={`Welcome back, ${user?.full_name || "Admin"}`}
+        title={`Welcome, ${user?.full_name || "Admin"}`}
       />
 
       {/* Stats Overview */}
@@ -125,19 +124,19 @@ export default function AdminDashboard() {
         <div className="grid md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Total Users</CardDescription>
+              <CardDescription className="font-bold">Total Users</CardDescription>
               <CardTitle className="text-2xl">
                 {stats?.totalUsers ?? 0}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <div className="flex items-center text-sm text-gray-600">
+                <div className="flex items-center text-sm text-muted-foreground">
                   <Users className="h-4 w-4 mr-1" />
                   <span>All registered users</span>
                 </div>
                 {stats && stats.recentUsers > 0 && (
-                  <div className="flex items-center text-xs text-green-600">
+                  <div className="flex items-center text-xs text-primary">
                     <TrendingUp className="h-3 w-3 mr-1" />
                     <span>+{stats.recentUsers} this week</span>
                   </div>
@@ -148,19 +147,19 @@ export default function AdminDashboard() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Total Consultations</CardDescription>
+              <CardDescription className="font-bold">Total Consultations</CardDescription>
               <CardTitle className="text-2xl">
                 {stats?.totalConsultations ?? 0}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <div className="flex items-center text-sm text-gray-600">
+                <div className="flex items-center text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4 mr-1" />
                   <span>All time consultations</span>
                 </div>
                 {stats && stats.recentConsultations > 0 && (
-                  <div className="flex items-center text-xs text-green-600">
+                  <div className="flex items-center text-xs text-primary">
                     <TrendingUp className="h-3 w-3 mr-1" />
                     <span>+{stats.recentConsultations} this week</span>
                   </div>
@@ -171,13 +170,13 @@ export default function AdminDashboard() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Total Revenue</CardDescription>
+              <CardDescription className="font-bold">Total Revenue</CardDescription>
               <CardTitle className="text-2xl">
                 {stats ? formatCurrency(stats.totalRevenue) : "Le 0"}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center text-sm text-gray-600">
+              <div className="flex items-center text-sm text-muted-foreground">
                 <DollarSign className="h-4 w-4 mr-1" />
                 <span>Total payments received</span>
               </div>
@@ -186,13 +185,13 @@ export default function AdminDashboard() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Healthcare Providers</CardDescription>
+              <CardDescription className="font-bold">Healthcare Providers</CardDescription>
               <CardTitle className="text-2xl">
                 {stats?.totalHealthcareProviders ?? 0}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center text-sm text-gray-600">
+              <div className="flex items-center text-sm text-muted-foreground">
                 <Users className="h-4 w-4 mr-1" />
                 <span>Active providers</span>
               </div>
@@ -208,9 +207,9 @@ export default function AdminDashboard() {
               <CardDescription>Detailed platform metrics</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">
+                  <p className="text-sm text-muted-foreground mb-1">
                     Pending Consultations
                   </p>
                   <p className="text-2xl font-bold">
@@ -218,35 +217,12 @@ export default function AdminDashboard() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">
+                  <p className="text-sm text-muted-foreground mb-1">
                     Completed Consultations
                   </p>
                   <p className="text-2xl font-bold">
                     {stats.completedConsultations}
                   </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Users by Role</p>
-                  <div className="flex gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-500">Patients:</span>{" "}
-                      <span className="font-semibold">
-                        {stats.usersByRole.patients}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Doctors:</span>{" "}
-                      <span className="font-semibold">
-                        {stats.usersByRole.doctors}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Admins:</span>{" "}
-                      <span className="font-semibold">
-                        {stats.usersByRole.admins}
-                      </span>
-                    </div>
-                  </div>
                 </div>
               </div>
             </CardContent>

@@ -23,6 +23,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { PatientHeader } from "@/components/patient-header";
 
 interface PatientStats {
   upcomingConsultations: number;
@@ -142,16 +143,14 @@ export default function DashboardPage() {
 
   // Patient dashboard
   return (
-    <div className="p-6">
+    <div className="p-6 bg-background">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Welcome back, {user?.full_name || "Patient"}!
-            </h1>
-            <p className="text-gray-600 mt-2">Your HealthConnect Dashboard</p>
-          </div>
+          <PatientHeader
+            title={`Welcome, ${user?.full_name || "Patient"}!`}
+            description="Your HealthConnect Dashboard"
+          />
         </div>
 
         {/* Quick Stats */}
@@ -201,7 +200,7 @@ export default function DashboardPage() {
                   <CardTitle className="text-lg">Book Consultation</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 text-center">
+                  <p className="text-sm text-muted-foreground text-center">
                     Schedule a consultation with a healthcare provider
                   </p>
                 </CardContent>
@@ -211,11 +210,11 @@ export default function DashboardPage() {
             <Link href="/education">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="text-center">
-                  <BookOpen className="h-10 w-10 text-green-600 mx-auto mb-2" />
+                  <BookOpen className="h-10 w-10 text-primary mx-auto mb-2" />
                   <CardTitle className="text-lg">Health Education</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 text-center">
+                  <p className="text-sm text-muted-foreground text-center">
                     Access health education content in your language
                   </p>
                 </CardContent>
@@ -225,11 +224,11 @@ export default function DashboardPage() {
             <Link href="/payments">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="text-center">
-                  <CreditCard className="h-10 w-10 text-purple-600 mx-auto mb-2" />
+                  <CreditCard className="h-10 w-10 text-primary mx-auto mb-2" />
                   <CardTitle className="text-lg">Payments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 text-center">
+                  <p className="text-sm text-muted-foreground text-center">
                     View payment history and make payments
                   </p>
                 </CardContent>
@@ -239,11 +238,11 @@ export default function DashboardPage() {
             <Link href="/community">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="text-center">
-                  <Users className="h-10 w-10 text-orange-600 mx-auto mb-2" />
+                  <Users className="h-10 w-10 text-primary mx-auto mb-2" />
                   <CardTitle className="text-lg">Community</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 text-center">
+                  <p className="text-sm text-muted-foreground text-center">
                     Join support groups and connect with others
                   </p>
                 </CardContent>
@@ -265,40 +264,42 @@ export default function DashboardPage() {
               {stats && stats.recentConsultations.length > 0 ? (
                 <div className="space-y-3">
                   {stats.recentConsultations.map((consultation) => (
-                    <div
+                    <Link
                       key={consultation.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
+                      href={`/consultation/${consultation.id}`}
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold">
-                            {consultation.healthcare_providers?.full_name ||
-                              "Healthcare Provider"}
+                      <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-semibold">
+                              {consultation.healthcare_providers?.full_name ||
+                                "Healthcare Provider"}
+                            </p>
+                            <Badge variant="outline">
+                              {consultation.consultation_type}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {consultation.healthcare_providers?.specialty} •{" "}
+                            {formatDate(consultation.scheduled_at)}
                           </p>
-                          <Badge variant="outline">
-                            {consultation.consultation_type}
-                          </Badge>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatCurrency(consultation.cost_leone)}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-600">
-                          {consultation.healthcare_providers?.specialty} •{" "}
-                          {formatDate(consultation.scheduled_at)}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatCurrency(consultation.cost_leone)}
-                        </p>
+                        <Badge
+                          variant={
+                            consultation.status === "completed"
+                              ? "default"
+                              : consultation.status === "scheduled"
+                              ? "secondary"
+                              : "outline"
+                          }
+                        >
+                          {consultation.status}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant={
-                          consultation.status === "completed"
-                            ? "default"
-                            : consultation.status === "scheduled"
-                            ? "secondary"
-                            : "outline"
-                        }
-                      >
-                        {consultation.status}
-                      </Badge>
-                    </div>
+                    </Link>
                   ))}
                   <Link href="/consultation">
                     <Button variant="outline" className="w-full mt-4">
@@ -307,11 +308,13 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                   <p>No consultations yet</p>
                   <Link href="/consultation">
-                    <Button className="mt-4">Book Your First Consultation</Button>
+                    <Button className="mt-4">
+                      Book Your First Consultation
+                    </Button>
                   </Link>
                 </div>
               )}
@@ -328,28 +331,28 @@ export default function DashboardPage() {
             <CardContent>
               <div className="space-y-3">
                 <div className="flex items-start space-x-3">
-                  <Heart className="h-5 w-5 text-red-500 mt-0.5" />
+                  <Heart className="h-5 w-5 text-destructive mt-0.5" />
                   <div>
                     <p className="font-medium">Stay Hydrated</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       Drink at least 8 glasses of water daily
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <Heart className="h-5 w-5 text-red-500 mt-0.5" />
+                  <Heart className="h-5 w-5 text-destructive mt-0.5" />
                   <div>
                     <p className="font-medium">Regular Exercise</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       30 minutes of daily activity recommended
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <Heart className="h-5 w-5 text-red-500 mt-0.5" />
+                  <Heart className="h-5 w-5 text-destructive mt-0.5" />
                   <div>
                     <p className="font-medium">Balanced Diet</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       Eat a variety of nutritious foods
                     </p>
                   </div>

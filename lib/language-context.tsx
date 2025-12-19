@@ -22,9 +22,9 @@ const translations: Record<Language, Record<string, string>> = {
     "header.offline": "Offline Mode",
 
     // Hero Section
-    "hero.title": "Healthcare Access for Every Rural Woman",
+    "hero.title": "Healthcare Access for Every Woman",
     "hero.subtitle":
-      "Breaking barriers to healthcare through virtual consultations, health education, and mobile-friendly solutions designed for rural communities in Sierra Leone.",
+      "Breaking barriers to healthcare through virtual consultations, health education, and mobile-friendly solutions designed for communities in Sierra Leone.",
     "hero.feature_phone": "Feature Phone Support",
     "hero.voice_nav": "Voice Navigation",
     "hero.offline": "Offline Access",
@@ -71,12 +71,12 @@ const translations: Record<Language, Record<string, string>> = {
     "actions.start_learning": "Start Learning",
 
     // Footer
-    "footer.tagline": "Bridging healthcare gaps for rural women in Sierra Leone and beyond.",
+    "footer.tagline": "Bridging healthcare gaps for women in Sierra Leone and beyond.",
     "footer.services": "Services",
     "footer.access_methods": "Access Methods",
     "footer.emergency": "Emergency",
     "footer.emergency_line": "24/7 Emergency Line",
-    "footer.copyright": "Empowering rural women through accessible healthcare.",
+    "footer.copyright": "Empowering women through accessible healthcare.",
 
     // Common
     "common.back": "Back",
@@ -91,9 +91,9 @@ const translations: Record<Language, Record<string, string>> = {
     "header.offline": "Offline mode",
 
     // Hero Section
-    "hero.title": "Helth kia fɔ ɔl rural uman",
+    "hero.title": "Helth kia fɔ ɔl uman",
     "hero.subtitle":
-      "Wi de brok barera fɔ helth kia tru vaɔyal kɔnsɔlteshɔn, helth ɛdyukeshɔn, ɛn mobayl-frɛndli sɔlushɔn dɛn we wi mek fɔ rural kɔmyuniti dɛn na Siɛra Liɔn.",
+      "Wi de brok barera fɔ helth kia tru vaɔyal kɔnsɔlteshɔn, helth ɛdyukeshɔn, ɛn mobayl-frɛndli sɔlushɔn dɛn we wi mek fɔ kɔmyuniti dɛn na Siɛra Liɔn.",
     "hero.feature_phone": "Fichɔ fon sɔpot",
     "hero.voice_nav": "Vɔys navigeshɔn",
     "hero.offline": "Offline akses",
@@ -139,12 +139,12 @@ const translations: Record<Language, Record<string, string>> = {
     "actions.start_learning": "Stat fɔ lan",
 
     // Footer
-    "footer.tagline": "Wi de braj helth kia gap fɔ rural uman dɛn na Siɛra Liɔn ɛn biɔn.",
+    "footer.tagline": "Wi de braj helth kia gap fɔ uman dɛn na Siɛra Liɔn ɛn biɔn.",
     "footer.services": "Savis dɛn",
     "footer.access_methods": "Akses we dɛn",
     "footer.emergency": "Emajɛnsi",
     "footer.emergency_line": "24/7 Emajɛnsi layn",
-    "footer.copyright": "Wi de ɛmpawa rural uman dɛn tru akses helth kia tɛknɔlɔji.",
+    "footer.copyright": "Wi de ɛmpawa uman dɛn tru akses helth kia tɛknɔlɔji.",
 
     // Common
     "common.back": "Go bak",

@@ -96,22 +96,22 @@ export function AdminSidebar({
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed lg:static inset-y-0 left-0 z-50 flex h-screen flex-col bg-gray-900 text-white transition-all duration-300 ease-in-out",
+          "fixed lg:static inset-y-0 left-0 z-50 flex h-screen flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           isCollapsed ? "w-20" : "w-64"
         )}
       >
         {/* Logo/Header */}
-        <div className="flex h-16 items-center justify-between border-b border-gray-800 px-4">
+        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
           {!isCollapsed && (
             <div className="flex items-center space-x-2">
-              <Shield className="h-6 w-6 text-green-500" />
+              <Shield className="h-6 w-6 text-sidebar-primary" />
               <span className="text-lg font-bold">Admin Panel</span>
             </div>
           )}
           {isCollapsed && (
             <div className="flex items-center justify-center w-full">
-              <Shield className="h-6 w-6 text-green-500" />
+              <Shield className="h-6 w-6 text-sidebar-primary" />
             </div>
           )}
           <div className="flex items-center space-x-1">
@@ -120,7 +120,7 @@ export function AdminSidebar({
               variant="ghost"
               size="sm"
               onClick={onCollapseToggle}
-              className="hidden lg:flex text-gray-300 hover:text-white hover:bg-gray-800 p-1 h-8 w-8"
+              className="hidden lg:flex text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent p-1 h-8 w-8"
             >
               {isCollapsed ? (
                 <ChevronRight className="h-4 w-4" />
@@ -133,7 +133,7 @@ export function AdminSidebar({
               variant="ghost"
               size="sm"
               onClick={onToggle}
-              className="lg:hidden text-gray-300 hover:text-white hover:bg-gray-800"
+              className="lg:hidden text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -158,8 +158,8 @@ export function AdminSidebar({
                 className={cn(
                   "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors group",
                   isActive
-                    ? "bg-green-600 text-white"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-white",
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   isCollapsed ? "justify-center" : "space-x-3"
                 )}
                 title={isCollapsed ? item.name : undefined}
@@ -172,23 +172,23 @@ export function AdminSidebar({
         </nav>
 
         {/* User Info & Logout */}
-        <div className="border-t border-gray-800 p-4">
+        <div className="border-t border-sidebar-border p-4">
           {!isCollapsed && (
             <div className="mb-3 flex items-center space-x-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-600 flex-shrink-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground flex-shrink-0">
                 <Shield className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">
                   {user?.full_name || "Admin"}
                 </p>
-                <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+                <p className="text-xs text-sidebar-foreground/60 truncate">{user?.email}</p>
               </div>
             </div>
           )}
           {isCollapsed && (
             <div className="mb-3 flex items-center justify-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground">
                 <Shield className="h-5 w-5" />
               </div>
             </div>
@@ -198,7 +198,7 @@ export function AdminSidebar({
             size="sm"
             onClick={handleSignOut}
             className={cn(
-              "w-full border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white",
+              "w-full border-sidebar-border text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               isCollapsed ? "px-2" : ""
             )}
             title={isCollapsed ? "Sign Out" : undefined}

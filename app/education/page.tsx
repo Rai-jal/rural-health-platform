@@ -137,7 +137,7 @@ export default function EducationPage() {
   // Show loading state
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p>Checking authentication...</p>
@@ -164,7 +164,7 @@ export default function EducationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-background p-4">
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center mb-8">
@@ -323,7 +323,7 @@ export default function EducationPage() {
 
                   {/* Audio Player */}
                   {content.content_type === "audio" && (
-                    <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="bg-muted/50 rounded-lg p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Volume2 className="h-4 w-4 text-green-600" />

@@ -99,11 +99,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
-            <Heart className="h-10 w-10 text-green-600" />
+            <Heart className="h-10 w-10 text-primary" />
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>Sign in to your HealthConnect account</CardDescription>
@@ -158,8 +158,8 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-gray-600">Don&apos;t have an account? </span>
-            <Link href="/auth/signup" className="text-green-600 hover:underline font-medium">
+            <span className="text-muted-foreground">Don&apos;t have an account? </span>
+            <Link href="/auth/signup" className="text-primary hover:underline font-medium">
               Sign up
             </Link>
           </div>

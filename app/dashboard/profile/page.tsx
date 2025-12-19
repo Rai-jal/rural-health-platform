@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Save, Loader2, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { PatientHeader } from "@/components/patient-header";
 import { useToast } from "@/components/ui/toast";
 
 export default function PatientProfilePage() {
@@ -90,18 +91,17 @@ export default function PatientProfilePage() {
   }
 
   if (!isLoggedIn || user?.role !== "Patient") {
+    router.push("/unauthorized");
     return null;
   }
 
   return (
     <div className="p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-          <p className="text-gray-600 mt-2">
-            Manage your personal information and account settings
-          </p>
-        </div>
+        <PatientHeader
+          title="Profile Settings"
+          description="Manage your personal information and account settings"
+        />
 
         <div className="grid md:grid-cols-3 gap-6">
           {/* Profile Info Card */}
@@ -112,26 +112,29 @@ export default function PatientProfilePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-600">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary">
                   <User className="h-8 w-8 text-white" />
                 </div>
                 <div>
                   <p className="font-semibold text-lg">
                     {user?.full_name || "Patient"}
                   </p>
-                  <p className="text-sm text-gray-600">{user?.email}</p>
+                  <p className="text-sm text-muted-foreground">{user?.email}</p>
                 </div>
               </div>
               <div className="pt-4 border-t">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">Role</span>
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  <span className="text-sm text-muted-foreground">Role</span>
+                  <Badge
+                    variant="outline"
+                    className="bg-primary/10 text-primary border-primary/20"
+                  >
                     Patient
                   </Badge>
                 </div>
                 {user?.phone_number && (
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-600">Phone</span>
+                    <span className="text-sm text-muted-foreground">Phone</span>
                     <span className="text-sm font-medium">
                       {user.phone_number}
                     </span>
@@ -139,7 +142,9 @@ export default function PatientProfilePage() {
                 )}
                 {user?.location && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Location</span>
+                    <span className="text-sm text-muted-foreground">
+                      Location
+                    </span>
                     <span className="text-sm font-medium">{user.location}</span>
                   </div>
                 )}
@@ -174,9 +179,9 @@ export default function PatientProfilePage() {
                     type="email"
                     value={user?.email || ""}
                     disabled
-                    className="bg-gray-50"
+                    className="bg-muted/50"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Email cannot be changed
                   </p>
                 </div>
@@ -226,4 +231,3 @@ export default function PatientProfilePage() {
     </div>
   );
 }
-

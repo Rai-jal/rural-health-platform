@@ -19,6 +19,26 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const providerId = searchParams.get("provider_id");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const offset = (page - 1) * limit;
+
+    // Build count query for pagination
+    let countQuery = supabase
+      .from("consultations")
+      .select("*", { count: "exact", head: true });
+
+    if (status) {
+      countQuery = countQuery.eq("status", status);
+    }
+    if (providerId) {
+      countQuery = countQuery.eq("provider_id", providerId);
+    }
+
+    const { count, error: countError } = await countQuery;
+    if (countError) {
+      console.error("Error counting consultations:", countError);
+    }
 
     let query = supabase
       .from("consultations")
@@ -38,7 +58,8 @@ export async function GET(request: Request) {
         )
       `
       )
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (status) {
       query = query.eq("status", status);
@@ -57,7 +78,15 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json({ consultations: consultations || [] });
+    return NextResponse.json({
+      consultations: consultations || [],
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit),
+      },
+    });
   } catch (error) {
     console.error("Error fetching consultations:", error);
     return NextResponse.json(

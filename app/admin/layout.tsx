@@ -36,14 +36,13 @@ export default function AdminLayout({
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         onCollapseToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-      <main className="flex-1 overflow-y-auto bg-gray-50">
+      <main className="flex-1 overflow-y-auto bg-background">
         {/* Mobile Toggle Button */}
-        <div className="lg:hidden sticky top-0 z-30 bg-white border-b px-4 py-3">
+        <div className="lg:hidden sticky top-0 z-30 bg-background border-b px-4 py-3">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(true)}
-            className="text-gray-700"
           >
             <Menu className="h-5 w-5" />
           </Button>

@@ -72,7 +72,12 @@ export default function ProvidersPage() {
     experience_years: 0,
     location: "",
     is_available: true,
+    // Login credentials (only for new providers)
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (!authLoading && (!isLoggedIn || user?.role !== "Admin")) {
@@ -115,7 +120,11 @@ export default function ProvidersPage() {
       experience_years: 0,
       location: "",
       is_available: true,
+      email: "",
+      password: "",
+      confirmPassword: "",
     });
+    setPasswordErrors([]);
     setIsDialogOpen(true);
   };
 
@@ -128,21 +137,91 @@ export default function ProvidersPage() {
       experience_years: provider.experience_years,
       location: provider.location || "",
       is_available: provider.is_available,
+      email: "", // Don't show email in edit mode for security
+      password: "",
+      confirmPassword: "",
     });
+    setPasswordErrors([]);
     setIsDialogOpen(true);
   };
 
+  const validatePassword = (password: string, confirmPassword: string): string[] => {
+    const errors: string[] = [];
+    
+    if (password.length < 8) {
+      errors.push("Password must be at least 8 characters");
+    }
+    if (!/[A-Z]/.test(password)) {
+      errors.push("Password must contain at least one uppercase letter");
+    }
+    if (!/[a-z]/.test(password)) {
+      errors.push("Password must contain at least one lowercase letter");
+    }
+    if (!/[0-9]/.test(password)) {
+      errors.push("Password must contain at least one number");
+    }
+    if (password !== confirmPassword) {
+      errors.push("Passwords do not match");
+    }
+    
+    return errors;
+  };
+
   const handleSave = async () => {
+    // Validate password for new providers
+    if (!editingProvider) {
+      const errors = validatePassword(formData.password, formData.confirmPassword);
+      if (errors.length > 0) {
+        setPasswordErrors(errors);
+        addToast({
+          type: "error",
+          title: "Validation Error",
+          description: "Please fix the password errors",
+        });
+        return;
+      }
+      
+      if (!formData.email) {
+        addToast({
+          type: "error",
+          title: "Validation Error",
+          description: "Email is required",
+        });
+        return;
+      }
+    }
+
     try {
       const url = editingProvider
         ? `/api/admin/providers/${editingProvider.id}`
         : "/api/admin/providers";
       const method = editingProvider ? "PATCH" : "POST";
 
+      // Prepare payload - exclude password fields for edit, include for create
+      const payload = editingProvider
+        ? {
+            full_name: formData.full_name,
+            specialty: formData.specialty,
+            languages: formData.languages,
+            experience_years: formData.experience_years,
+            location: formData.location,
+            is_available: formData.is_available,
+          }
+        : {
+            full_name: formData.full_name,
+            specialty: formData.specialty,
+            languages: formData.languages,
+            experience_years: formData.experience_years,
+            location: formData.location,
+            is_available: formData.is_available,
+            email: formData.email,
+            password: formData.password,
+          };
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -153,10 +232,13 @@ export default function ProvidersPage() {
       addToast({
         type: "success",
         title: "Success",
-        description: `Provider ${editingProvider ? "updated" : "created"} successfully`,
+        description: editingProvider
+          ? "Provider updated successfully"
+          : "Provider created successfully. Login credentials have been sent via email.",
       });
 
       setIsDialogOpen(false);
+      setPasswordErrors([]);
       fetchProviders();
     } catch (err) {
       console.error("Error saving provider:", err);
@@ -228,7 +310,7 @@ export default function ProvidersPage() {
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search providers by name or specialty..."
                 value={searchTerm}
@@ -269,8 +351,8 @@ export default function ProvidersPage() {
               {filteredProviders.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
-                    <Stethoscope className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-500">No providers found</p>
+                    <Stethoscope className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No providers found</p>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -300,7 +382,7 @@ export default function ProvidersPage() {
                         <span className="font-semibold">
                           {provider.rating.toFixed(1)}
                         </span>
-                        <span className="text-gray-500 ml-1">
+                        <span className="text-muted-foreground ml-1">
                           ({provider.total_consultations})
                         </span>
                       </div>
@@ -431,6 +513,86 @@ export default function ProvidersPage() {
                 <Label htmlFor="is_available">Available for consultations</Label>
               </div>
             </div>
+
+            {/* Login Credentials Section - Only show for new providers */}
+            {!editingProvider && (
+              <>
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm font-semibold mb-4">Login Credentials</h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Create login credentials for this healthcare provider. They will receive an email with instructions.
+                  </p>
+                  <div className="grid md:grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="email">Email Address *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => {
+                          setFormData({ ...formData, email: e.target.value });
+                          setPasswordErrors([]);
+                        }}
+                        placeholder="provider@example.com"
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Must be unique. Used for login.
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="password">Password *</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => {
+                          setFormData({ ...formData, password: e.target.value });
+                          if (formData.confirmPassword) {
+                            setPasswordErrors(
+                              validatePassword(e.target.value, formData.confirmPassword)
+                            );
+                          }
+                        }}
+                        placeholder="Enter password"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        value={formData.confirmPassword}
+                        onChange={(e) => {
+                          setFormData({ ...formData, confirmPassword: e.target.value });
+                          setPasswordErrors(
+                            validatePassword(formData.password, e.target.value)
+                          );
+                        }}
+                        placeholder="Confirm password"
+                        required
+                      />
+                      {passwordErrors.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {passwordErrors.map((error, idx) => (
+                            <p key={idx} className="text-xs text-destructive">
+                              • {error}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      {passwordErrors.length === 0 && formData.password && formData.confirmPassword && (
+                        <p className="text-xs text-green-600 mt-1">✓ Passwords match</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Must be at least 8 characters with uppercase, lowercase, and number.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>

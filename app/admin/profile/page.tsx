@@ -147,7 +147,7 @@ export default function ProfileSettingsPage() {
                   type="email"
                   value={user?.email || ""}
                   disabled
-                  className="bg-gray-50"
+                    className="bg-muted/50"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Email cannot be changed
@@ -182,7 +182,7 @@ export default function ProfileSettingsPage() {
                   id="role"
                   value={user?.role || "Admin"}
                   disabled
-                  className="bg-gray-50"
+                    className="bg-muted/50"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Role cannot be changed

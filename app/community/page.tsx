@@ -132,7 +132,7 @@ export default function CommunityPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p>
@@ -162,7 +162,7 @@ export default function CommunityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
+    <div className="min-h-screen bg-background p-4">
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="flex items-center mb-8">
@@ -253,7 +253,7 @@ export default function CommunityPage() {
                     </div>
 
                     {group.healthcare_providers && (
-                      <div className="bg-gray-50 rounded-lg p-3">
+                      <div className="bg-muted/50 rounded-lg p-3">
                         <p className="text-sm font-medium text-gray-700 mb-1">
                           Moderated by:
                         </p>

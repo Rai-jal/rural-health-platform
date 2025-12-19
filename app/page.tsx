@@ -41,7 +41,7 @@ export default function HomePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
           <p>Loading...</p>
@@ -51,14 +51,14 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="py-12 px-4">
         <div className="container mx-auto text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-4xl font-bold text-foreground mb-4">
             {t("hero.title")}
           </h2>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
             {t("hero.subtitle")}
           </p>
 
@@ -83,7 +83,7 @@ export default function HomePage() {
 
           <div className="flex flex-wrap justify-center gap-4">
             <Link href="/consultation">
-              <Button size="lg" className="bg-green-600 hover:bg-green-700">
+              <Button size="lg">
                 <Phone className="h-5 w-5 mr-2" />
                 {t("hero.book_consultation")}
               </Button>
@@ -99,7 +99,7 @@ export default function HomePage() {
       </section>
 
       {/* Platform Access Methods */}
-      <section className="py-12 px-4 bg-white">
+      <section className="py-12 px-4 bg-card">
         <div className="container mx-auto">
           <h3 className="text-3xl font-bold text-center mb-8">
             {t("access.title")}
@@ -113,7 +113,7 @@ export default function HomePage() {
                 <CardDescription>{t("access.smartphone_desc")}</CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2">
+                <ul className="text-sm text-muted-foreground space-y-2">
                   <li>• Video consultations</li>
                   <li>• Interactive health content</li>
                   <li>• Appointment scheduling</li>
@@ -129,7 +129,7 @@ export default function HomePage() {
                 <CardDescription>{t("access.ussd_desc")}</CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2">
+                <ul className="text-sm text-muted-foreground space-y-2">
                   <li>• Dial *123# for menu</li>
                   <li>• SMS consultations</li>
                   <li>• Health tips via SMS</li>
@@ -145,7 +145,7 @@ export default function HomePage() {
                 <CardDescription>{t("access.voice_desc")}</CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2">
+                <ul className="text-sm text-muted-foreground space-y-2">
                   <li>• Voice-guided navigation</li>
                   <li>• Audio health education</li>
                   <li>• Speak with healthcare providers</li>
@@ -174,7 +174,7 @@ export default function HomePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 text-center">
+                  <p className="text-sm text-muted-foreground text-center">
                     {t("features.consultations_desc")}
                   </p>
                 </CardContent>
@@ -190,7 +190,7 @@ export default function HomePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 text-center">
+                  <p className="text-sm text-muted-foreground text-center">
                     {t("features.education_desc")}
                   </p>
                 </CardContent>
@@ -206,7 +206,7 @@ export default function HomePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 text-center">
+                  <p className="text-sm text-muted-foreground text-center">
                     {t("features.payments_desc")}
                   </p>
                 </CardContent>
@@ -222,7 +222,7 @@ export default function HomePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-600 text-center">
+                  <p className="text-sm text-muted-foreground text-center">
                     {t("features.community_desc")}
                   </p>
                 </CardContent>
@@ -233,12 +233,12 @@ export default function HomePage() {
       </section>
 
       {/* Offline Capabilities */}
-      <section className="py-12 px-4 bg-gray-50">
+      <section className="py-12 px-4 bg-muted/30">
         <div className="container mx-auto">
           <div className="text-center mb-8">
-            <WifiOff className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+            <WifiOff className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-3xl font-bold mb-4">{t("offline.title")}</h3>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               {t("offline.subtitle")}
             </p>
           </div>
@@ -282,7 +282,7 @@ export default function HomePage() {
       </section>
 
       {/* Quick Actions */}
-      <section className="py-12 px-4 bg-green-600 text-white">
+      <section className="py-12 px-4 bg-primary text-primary-foreground">
         <div className="container mx-auto text-center">
           <h3 className="text-3xl font-bold mb-8">{t("actions.title")}</h3>
 
@@ -328,37 +328,37 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 px-4">
+      <footer className="bg-card border-t border-border py-8 px-4">
         <div className="container mx-auto">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <Heart className="h-6 w-6 text-green-400" />
-                <span className="text-xl font-bold">{t("header.title")}</span>
+                <Heart className="h-6 w-6 text-primary" />
+                <span className="text-xl font-bold text-foreground">{t("header.title")}</span>
               </div>
-              <p className="text-gray-400 text-sm">{t("footer.tagline")}</p>
+              <p className="text-muted-foreground text-sm">{t("footer.tagline")}</p>
             </div>
 
             <div>
-              <h5 className="font-semibold mb-4">{t("footer.services")}</h5>
-              <ul className="space-y-2 text-sm text-gray-400">
+              <h5 className="font-semibold mb-4 text-foreground">{t("footer.services")}</h5>
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
-                  <Link href="/consultation" className="hover:text-white">
+                  <Link href="/consultation" className="hover:text-foreground transition-colors">
                     {t("features.consultations")}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/education" className="hover:text-white">
+                  <Link href="/education" className="hover:text-foreground transition-colors">
                     {t("features.education")}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/payments" className="hover:text-white">
+                  <Link href="/payments" className="hover:text-foreground transition-colors">
                     {t("features.payments")}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/community" className="hover:text-white">
+                  <Link href="/community" className="hover:text-foreground transition-colors">
                     {t("features.community")}
                   </Link>
                 </li>
@@ -366,10 +366,10 @@ export default function HomePage() {
             </div>
 
             <div>
-              <h5 className="font-semibold mb-4">
+              <h5 className="font-semibold mb-4 text-foreground">
                 {t("footer.access_methods")}
               </h5>
-              <ul className="space-y-2 text-sm text-gray-400">
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>Smartphone App</li>
                 <li>USSD: *123#</li>
                 <li>SMS: Text HEALTH to 1234</li>
@@ -378,19 +378,19 @@ export default function HomePage() {
             </div>
 
             <div>
-              <h5 className="font-semibold mb-4">{t("footer.emergency")}</h5>
+              <h5 className="font-semibold mb-4 text-foreground">{t("footer.emergency")}</h5>
               <div className="space-y-2 text-sm">
-                <p className="text-red-400 font-semibold">
+                <p className="text-destructive font-semibold">
                   {t("footer.emergency_line")}
                 </p>
-                <p className="text-white">Call: 117</p>
-                <p className="text-white">SMS: EMERGENCY to 1234</p>
+                <p className="text-foreground">Call: 117</p>
+                <p className="text-foreground">SMS: EMERGENCY to 1234</p>
               </div>
             </div>
           </div>
 
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>&copy; 2024 HealthConnect. {t("footer.copyright")}</p>
+          <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
+            <p>&copy; 2025 HealthConnect. {t("footer.copyright")}</p>
           </div>
         </div>
       </footer>

@@ -42,11 +42,11 @@ export function Navbar() {
     if (!user) return null;
     switch (user.role) {
       case "Admin":
-        return <Shield className="h-4 w-4 text-red-600" />;
+        return <Shield className="h-4 w-4 text-destructive" />;
       case "Doctor":
-        return <Stethoscope className="h-4 w-4 text-blue-600" />;
+        return <Stethoscope className="h-4 w-4 text-secondary" />;
       default:
-        return <User className="h-4 w-4 text-green-600" />;
+        return <User className="h-4 w-4 text-primary" />;
     }
   };
 
@@ -63,13 +63,13 @@ export function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
+    <nav className="bg-card shadow-sm border-b sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <Heart className="h-8 w-8 text-green-600" />
-            <span className="text-xl font-bold text-green-800">
+            <Heart className="h-8 w-8 text-primary" />
+            <span className="text-xl font-bold text-foreground">
               HealthConnect
             </span>
           </Link>

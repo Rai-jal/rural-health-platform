@@ -1,6 +1,6 @@
-# Rural Health Platform
+             # Health for Women Platform
 
-A comprehensive digital health solution designed for underserved rural women in Sierra Leone and sub-Saharan Africa.
+A comprehensive digital health solution designed for women in Sierra Leone and sub-Saharan Africa.
 
 ## 🌟 Features
 
@@ -23,27 +23,27 @@ A comprehensive digital health solution designed for underserved rural women in 
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 - Supabase account (optional for demo)
 
 ### Installation
 
 1. Clone the repository:
-\`\`\`bash
-git clone https://github.com/yourusername/rural-health-platform.git
-cd rural-health-platform
-\`\`\`
+   \`\`\`bash
+   git clone https://github.com/yourusername/rural-health-platform.git
+   cd rural-health-platform
+   \`\`\`
 
 2. Install dependencies:
-\`\`\`bash
-npm install
-\`\`\`
+   \`\`\`bash
+   npm install
+   \`\`\`
 
 3. Set up environment variables (optional):
-\`\`\`bash
-cp .env.example .env.local
-\`\`\`
+   \`\`\`bash
+   cp .env.example .env.local
+   \`\`\`
 
 Add your Supabase credentials:
 \`\`\`
@@ -52,27 +52,30 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 \`\`\`
 
 4. Run the development server:
-\`\`\`bash
-npm run dev
-\`\`\`
+   \`\`\`bash
+   npm run dev
+   \`\`\`
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 📱 Platform Access Methods
 
 ### Smartphone App
+
 - Full-featured web application
 - Video consultations
 - Interactive health content
 - Community features
 
 ### Feature Phone (USSD)
+
 - Dial `*123#` for main menu
 - SMS consultations
 - Health tips via SMS
 - Appointment booking
 
 ### Voice Calls (IVR)
+
 - Interactive voice response
 - Audio health education
 - Voice consultations
@@ -112,17 +115,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Designed for rural women in Sierra Leone and sub-Saharan Africa
+- Designed for women in Sierra Leone and sub-Saharan Africa
 - Built with accessibility and low-bandwidth connectivity in mind
 - Supports multiple local languages and cultural contexts
 
 ## 📞 Support
 
 For support and questions:
+
 - Email: support@healthconnect.sl
 - Phone: +232 XX XXX XXXX
 - Emergency: 117
 
 ---
 
-**Empowering rural women through accessible healthcare technology.**
+**Empowering women through accessible healthcare technology.**

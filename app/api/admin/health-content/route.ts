@@ -18,7 +18,7 @@ const createContentSchema = z.object({
 });
 
 // GET - Fetch all health content (Admin only)
-export async function GET() {
+export async function GET(request: Request) {
   const { user, profile, error } = await authGuard({ requiredRole: "Admin" });
 
   if (error) {
@@ -31,11 +31,25 @@ export async function GET() {
 
   try {
     const supabase = await createClient();
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const offset = (page - 1) * limit;
+
+    // Get total count for pagination
+    const { count, error: countError } = await supabase
+      .from("health_content")
+      .select("*", { count: "exact", head: true });
+
+    if (countError) {
+      console.error("Error counting content:", countError);
+    }
 
     const { data: content, error: contentError } = await supabase
       .from("health_content")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (contentError) {
       return NextResponse.json(
@@ -44,7 +58,15 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({ content: content || [] });
+    return NextResponse.json({
+      content: content || [],
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / limit),
+      },
+    });
   } catch (error) {
     console.error("Error fetching content:", error);
     return NextResponse.json(
