@@ -45,6 +45,7 @@ export default function EducationPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [audioElements, setAudioElements] = useState<Record<string, HTMLAudioElement>>({});
   const [healthContent, setHealthContent] = useState<HealthContent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,13 +93,75 @@ export default function EducationPage() {
     }
   }, [authLoading, isLoggedIn, router, loadHealthContent]);
 
-  const toggleAudio = (contentId: string) => {
-    if (playingAudio === contentId) {
+  const toggleAudio = (content: HealthContent) => {
+    if (!content.audio_url) {
+      addToast({
+        type: "error",
+        title: "Audio Not Available",
+        description: "Audio file is not available for this content.",
+      });
+      return;
+    }
+
+    if (playingAudio === content.id) {
+      // Stop playing
+      const audio = audioElements[content.id];
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
       setPlayingAudio(null);
     } else {
-      setPlayingAudio(contentId);
+      // Stop any currently playing audio
+      if (playingAudio) {
+        const currentAudio = audioElements[playingAudio];
+        if (currentAudio) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+        }
+      }
+
+      // Create new audio element if it doesn't exist
+      let audio = audioElements[content.id];
+      if (!audio) {
+        audio = new Audio(content.audio_url);
+        audio.addEventListener('ended', () => {
+          setPlayingAudio(null);
+        });
+        audio.addEventListener('error', (e) => {
+          console.error('Audio playback error:', e);
+          addToast({
+            type: "error",
+            title: "Playback Error",
+            description: "Failed to play audio. Please check your connection.",
+          });
+          setPlayingAudio(null);
+        });
+        setAudioElements(prev => ({ ...prev, [content.id]: audio }));
+      }
+
+      // Play the audio
+      audio.play().catch((err) => {
+        console.error('Error playing audio:', err);
+        addToast({
+          type: "error",
+          title: "Playback Error",
+          description: "Failed to play audio. Please try again.",
+        });
+      });
+      setPlayingAudio(content.id);
     }
   };
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(audioElements).forEach(audio => {
+        audio.pause();
+        audio.src = '';
+      });
+    };
+  }, [audioElements]);
 
   const handleDownload = async (contentId: string) => {
     try {
@@ -322,7 +385,7 @@ export default function EducationPage() {
                   )}
 
                   {/* Audio Player */}
-                  {content.content_type === "audio" && (
+                  {content.content_type === "audio" && content.audio_url && (
                     <div className="bg-muted/50 rounded-lg p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
@@ -334,7 +397,7 @@ export default function EducationPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => toggleAudio(content.id)}
+                          onClick={() => toggleAudio(content)}
                         >
                           {playingAudio === content.id ? (
                             <Pause className="h-4 w-4" />
@@ -343,11 +406,23 @@ export default function EducationPage() {
                           )}
                         </Button>
                       </div>
-                      {playingAudio === content.id && (
+                      {playingAudio === content.id && content.audio_url && (
                         <div className="mt-2">
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-green-600 h-2 rounded-full w-1/3"></div>
-                          </div>
+                          <audio
+                            src={content.audio_url}
+                            className="w-full"
+                            controls
+                            autoPlay
+                            onEnded={() => setPlayingAudio(null)}
+                            onError={() => {
+                              addToast({
+                                type: "error",
+                                title: "Playback Error",
+                                description: "Failed to play audio. Please check your connection.",
+                              });
+                              setPlayingAudio(null);
+                            }}
+                          />
                           <p className="text-xs text-gray-600 mt-1">
                             Playing in {content.language}
                           </p>
@@ -358,9 +433,13 @@ export default function EducationPage() {
 
                   {/* Action Buttons */}
                   <div className="flex space-x-2">
-                    <Button size="sm" className="flex-1">
+                    <Button 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => router.push(`/education/${content.id}`)}
+                    >
                       <BookOpen className="h-4 w-4 mr-2" />
-                      Read
+                      {content.content_type === "article" ? "Read" : content.content_type === "audio" ? "Listen" : "Watch"}
                     </Button>
                     <Button
                       size="sm"

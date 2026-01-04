@@ -74,6 +74,9 @@ export interface HealthContent {
   content_type: string;
   language: string;
   description?: string;
+  content_text?: string;
+  audio_url?: string;
+  video_url?: string;
   duration_minutes?: number;
   rating?: number;
   download_count?: number;
