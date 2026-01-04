@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     }
 
     // If payment completed, update consultation status and send notifications
-    if (verification.status === "completed" && payment) {
+    if (verification.status === "completed" && payment && payment.consultations) {
       // Update consultation status to confirmed
       await supabase
         .from("consultations")
@@ -72,10 +72,18 @@ export async function POST(request: Request) {
         })
         .eq("id", payment.consultation_id);
 
-      // TODO: Send confirmation email/SMS
-      // TODO: Trigger notifications
-      // Example:
-      // await sendPaymentConfirmationSMS(payment.consultations?.user_id);
+      // Send payment confirmation notification
+      try {
+        const { notifyPaymentConfirmation } = await import("@/lib/notifications");
+        await notifyPaymentConfirmation(
+          payment.consultation_id,
+          payment.consultations.user_id,
+          payment.amount_leone
+        );
+      } catch (notifError) {
+        console.error("Error sending payment confirmation:", notifError);
+        // Don't fail the webhook if notification fails
+      }
     }
 
     return NextResponse.json({ 

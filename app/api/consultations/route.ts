@@ -167,6 +167,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Notify provider about new consultation booking
+    if (consultation) {
+      try {
+        const { notifyProviderBooking } = await import("@/lib/notifications");
+        await notifyProviderBooking(consultation.id, consultation.provider_id);
+      } catch (notifError) {
+        console.error("Error sending provider notification:", notifError);
+        // Don't fail the request if notification fails
+      }
+    }
+
     return NextResponse.json({ data: consultation }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -88,6 +88,25 @@ export async function PATCH(
       );
     }
 
+    // If consultation was accepted (status changed to scheduled), notify patient
+    if (
+      updatedConsultation &&
+      validatedData.status === "scheduled" &&
+      updatedConsultation.status === "scheduled" &&
+      updatedConsultation.users
+    ) {
+      try {
+        const { notifyPatientAcceptance } = await import("@/lib/notifications");
+        await notifyPatientAcceptance(
+          updatedConsultation.id,
+          updatedConsultation.user_id
+        );
+      } catch (notifError) {
+        console.error("Error sending patient notification:", notifError);
+        // Don't fail the request if notification fails
+      }
+    }
+
     return NextResponse.json({ consultation: updatedConsultation });
   } catch (error) {
     if (error instanceof z.ZodError) {

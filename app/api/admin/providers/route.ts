@@ -92,15 +92,14 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = createProviderSchema.parse(body);
 
-    const supabase = await createClient();
+    // Use admin client to bypass RLS for admin operations
+    const adminClient = getAdminClient();
     let authUserId: string | null = null;
 
     // If email and password are provided, create auth user first
     if (validatedData.email && validatedData.password) {
       try {
         // Use admin client to create auth user
-        const adminClient = getAdminClient();
-        
         const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
           email: validatedData.email,
           password: validatedData.password,
@@ -129,7 +128,8 @@ export async function POST(request: Request) {
         authUserId = authUser.user.id;
 
         // Create user profile in users table with Doctor role
-        const { error: userProfileError } = await supabase
+        // Use admin client to bypass RLS
+        const { error: userProfileError } = await adminClient
           .from("users")
           .upsert({
             id: authUserId,
@@ -162,12 +162,13 @@ export async function POST(request: Request) {
     }
 
     // Create healthcare provider profile
+    // Use admin client to bypass RLS
     const { email, password, ...providerData } = validatedData;
     const providerInsert = authUserId
       ? { ...providerData, user_id: authUserId }
       : providerData;
 
-    const { data: provider, error: providerError } = await supabase
+    const { data: provider, error: providerError } = await adminClient
       .from("healthcare_providers")
       .insert(providerInsert)
       .select()
@@ -177,9 +178,8 @@ export async function POST(request: Request) {
       // If provider creation fails but auth user was created, clean up
       if (authUserId) {
         try {
-          const adminClient = getAdminClient();
           await adminClient.auth.admin.deleteUser(authUserId);
-          await supabase.from("users").delete().eq("id", authUserId);
+          await adminClient.from("users").delete().eq("id", authUserId);
         } catch (cleanupErr) {
           console.error("Error during cleanup:", cleanupErr);
         }

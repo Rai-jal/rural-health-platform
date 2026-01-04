@@ -62,25 +62,6 @@ export default function HomePage() {
             {t("hero.subtitle")}
           </p>
 
-          <div className="flex flex-wrap justify-center gap-4 mb-8">
-            <Badge variant="secondary" className="px-4 py-2">
-              <Phone className="h-4 w-4 mr-2" />
-              {t("hero.feature_phone")}
-            </Badge>
-            <Badge variant="secondary" className="px-4 py-2">
-              <Volume2 className="h-4 w-4 mr-2" />
-              {t("hero.voice_nav")}
-            </Badge>
-            <Badge variant="secondary" className="px-4 py-2">
-              <WifiOff className="h-4 w-4 mr-2" />
-              {t("hero.offline")}
-            </Badge>
-            <Badge variant="secondary" className="px-4 py-2">
-              <Globe className="h-4 w-4 mr-2" />
-              {t("hero.multilingual")}
-            </Badge>
-          </div>
-
           <div className="flex flex-wrap justify-center gap-4">
             <Link href="/consultation">
               <Button size="lg">

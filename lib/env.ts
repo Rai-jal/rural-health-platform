@@ -5,6 +5,13 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, 'Supabase anon key is required'),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'Supabase service role key is required').optional(),
   NEXT_PUBLIC_APP_URL: z.string().url('Invalid app URL').optional(),
+  // Twilio SMS Configuration (optional)
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_PHONE_NUMBER: z.string().optional(),
+  // Twilio Video/Voice Configuration (optional)
+  TWILIO_API_KEY: z.string().optional(),
+  TWILIO_API_SECRET: z.string().optional(),
 })
 
 // Parse and validate environment variables
@@ -15,6 +22,11 @@ function getEnv() {
       NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
+      TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
+      TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER,
+      TWILIO_API_KEY: process.env.TWILIO_API_KEY,
+      TWILIO_API_SECRET: process.env.TWILIO_API_SECRET,
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
