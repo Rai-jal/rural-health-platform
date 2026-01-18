@@ -114,6 +114,23 @@ export class SMSService {
   }
 
   /**
+   * Send notification to patient when provider is assigned
+   */
+  async sendPatientAssignmentNotification(
+    patientPhone: string,
+    providerName: string,
+    consultationType: string,
+    scheduledDate: string
+  ): Promise<SMSResponse> {
+    const message = `Provider Assigned\n\nA healthcare provider has been assigned to your consultation request.\n\nProvider: ${providerName}\nType: ${consultationType}\nScheduled: ${scheduledDate}\n\nPlease log in to confirm or choose another provider.`;
+
+    return this.sendSMS({
+      to: patientPhone,
+      message,
+    });
+  }
+
+  /**
    * Send consultation confirmation to patient
    */
   async sendPatientConfirmation(

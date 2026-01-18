@@ -21,38 +21,32 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const adminClient = getAdminClient();
 
-    // Get doctor's provider ID - try by user_id first, then by email
+    // Get doctor's provider ID by user_id
     let { data: provider, error: providerError } = await adminClient
       .from("healthcare_providers")
-      .select("id, user_id, full_name, email")
+      .select("id, user_id, full_name")
       .eq("user_id", user.id)
       .single();
 
-    // If not found by user_id, try by email
-    if (providerError || !provider) {
-      if (user.email) {
-        const { data: providerByEmail, error: emailError } = await adminClient
-          .from("healthcare_providers")
-          .select("id, user_id, full_name, email")
-          .eq("email", user.email)
-          .single();
-
-        if (!emailError && providerByEmail) {
-          provider = providerByEmail;
-          providerError = null;
-        }
-      }
-    }
-
     if (providerError || !provider) {
       // Doctor doesn't have a provider profile yet - return empty list
-      console.warn(
+      console.error(
         `No provider profile found for doctor user_id: ${user.id}, email: ${user.email}`
       );
-      return NextResponse.json({ consultations: [] });
+      return NextResponse.json({ 
+        consultations: [],
+        error: "No provider profile found. Please contact administrator.",
+        debug: {
+          user_id: user.id,
+          email: user.email
+        }
+      }, { status: 404 });
     }
 
     const providerId = provider.id as string;
+    
+    // Log for debugging
+    console.log(`Doctor consultations query: provider_id=${providerId}, doctor_user_id=${user.id}, doctor_email=${user.email}`);
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
@@ -74,7 +68,7 @@ export async function GET(request: Request) {
       `
       )
       .eq("provider_id", providerId)
-      .order("scheduled_at", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (status) {
       query = query.eq("status", status);
@@ -84,10 +78,17 @@ export async function GET(request: Request) {
 
     if (consultationsError) {
       console.error("Consultations query error:", consultationsError);
+      console.error("Query details: provider_id=", providerId, "status=", status);
       return NextResponse.json(
-        { error: "Failed to fetch consultations" },
+        { error: "Failed to fetch consultations", details: consultationsError.message },
         { status: 500 }
       );
+    }
+
+    // Log for debugging
+    console.log(`Found ${consultations?.length || 0} consultations for provider_id=${providerId}`);
+    if (consultations && consultations.length > 0) {
+      console.log(`Sample consultation IDs:`, consultations.slice(0, 3).map(c => ({ id: c.id, status: c.status, provider_id: c.provider_id })));
     }
 
     return NextResponse.json({ consultations: consultations || [] });

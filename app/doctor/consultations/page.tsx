@@ -49,7 +49,8 @@ interface Consultation {
   id: string;
   consultation_type: string;
   status: string;
-  scheduled_at: string;
+  scheduled_at: string | null;
+  preferred_date?: string | null;
   duration_minutes: number;
   cost_leone: number;
   reason_for_consultation?: string;
@@ -234,7 +235,10 @@ export default function DoctorConsultationsPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) {
+      return "Not scheduled";
+    }
     return new Date(dateString).toLocaleString("en-US", {
       year: "numeric",
       month: "short",
@@ -250,6 +254,8 @@ export default function DoctorConsultationsPage() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "outline"> = {
+      assigned: "outline",
+      confirmed: "secondary",
       scheduled: "default",
       in_progress: "secondary",
       completed: "default",
@@ -304,6 +310,8 @@ export default function DoctorConsultationsPage() {
                 className="px-3 py-2 border rounded-md text-sm"
               >
                 <option value="all">All Status</option>
+                <option value="assigned">Assigned</option>
+                <option value="confirmed">Confirmed</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
@@ -511,6 +519,8 @@ export default function DoctorConsultationsPage() {
                 }
                 className="w-full px-3 py-2 border rounded-md"
               >
+                <option value="assigned">Assigned</option>
+                <option value="confirmed">Confirmed</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>

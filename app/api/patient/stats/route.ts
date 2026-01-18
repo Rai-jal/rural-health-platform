@@ -25,7 +25,6 @@ export async function GET() {
       upcomingConsultationsResult,
       totalConsultationsResult,
       healthContentResult,
-      communityGroupsResult,
       paymentsResult,
     ] = await Promise.all([
       // Upcoming consultations
@@ -48,13 +47,6 @@ export async function GET() {
         .from("health_content")
         .select("download_count")
         .limit(1000), // Get all content to sum downloads
-
-      // Community groups joined
-      supabase
-        .from("group_members")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("is_active", true),
 
       // Total payments
       supabase
@@ -106,7 +98,6 @@ export async function GET() {
       stats: {
         upcomingConsultations: upcomingConsultationsResult.count || 0,
         healthContentViewed,
-        communityGroups: communityGroupsResult.count || 0,
         totalPayments,
         totalConsultations: totalConsultationsResult.count || 0,
         recentConsultations: recentConsultations || [],

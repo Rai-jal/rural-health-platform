@@ -12,7 +12,6 @@ import {
   Phone,
   BookOpen,
   CreditCard,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -111,12 +110,6 @@ export function Navbar() {
                       Education
                     </Button>
                   </Link>
-                  <Link href="/community">
-                    <Button variant="ghost" size="sm">
-                      <Users className="h-4 w-4 mr-2" />
-                      Community
-                    </Button>
-                  </Link>
                 </>
               )}
 
@@ -209,12 +202,6 @@ export function Navbar() {
                     <Button variant="ghost" className="w-full justify-start">
                       <BookOpen className="h-4 w-4 mr-2" />
                       Education
-                    </Button>
-                  </Link>
-                  <Link href="/community">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <Users className="h-4 w-4 mr-2" />
-                      Community
                     </Button>
                   </Link>
                 </>

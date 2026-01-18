@@ -28,7 +28,6 @@ import { PatientHeader } from "@/components/patient-header";
 interface PatientStats {
   upcomingConsultations: number;
   healthContentViewed: number;
-  communityGroups: number;
   totalPayments: number;
   totalConsultations: number;
   recentConsultations: Array<{
@@ -154,7 +153,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid md:grid-cols-4 gap-4 mb-8">
+        <div className="grid md:grid-cols-3 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Upcoming Consultations</CardDescription>
@@ -173,14 +172,6 @@ export default function DashboardPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Community Groups</CardDescription>
-              <CardTitle className="text-2xl">
-                {stats?.communityGroups ?? 0}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
               <CardDescription>Total Payments</CardDescription>
               <CardTitle className="text-2xl">
                 {stats ? formatCurrency(stats.totalPayments) : "Le 0"}
@@ -192,7 +183,7 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Link href="/consultation">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="text-center">
@@ -230,20 +221,6 @@ export default function DashboardPage() {
                 <CardContent>
                   <p className="text-sm text-muted-foreground text-center">
                     View payment history and make payments
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/community">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader className="text-center">
-                  <Users className="h-10 w-10 text-primary mx-auto mb-2" />
-                  <CardTitle className="text-lg">Community</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground text-center">
-                    Join support groups and connect with others
                   </p>
                 </CardContent>
               </Card>

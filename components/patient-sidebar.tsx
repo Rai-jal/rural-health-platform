@@ -8,7 +8,6 @@ import {
   Phone,
   BookOpen,
   CreditCard,
-  Users,
   Settings,
   LogOut,
   X,
@@ -40,11 +39,6 @@ const navigation = [
     name: "Payments",
     href: "/payments",
     icon: CreditCard,
-  },
-  {
-    name: "Community",
-    href: "/community",
-    icon: Users,
   },
   {
     name: "Profile Settings",

@@ -12,6 +12,19 @@ const envSchema = z.object({
   // Twilio Video/Voice Configuration (optional)
   TWILIO_API_KEY: z.string().optional(),
   TWILIO_API_SECRET: z.string().optional(),
+  // Email Configuration (optional - SendGrid or AWS SES)
+  // SendGrid
+  SENDGRID_API_KEY: z.string().optional(),
+  SENDGRID_FROM_EMAIL: z.string().email('Invalid SendGrid from email').optional(),
+  SENDGRID_FROM_NAME: z.string().optional(),
+  // AWS SES
+  AWS_SES_REGION: z.string().optional(),
+  AWS_SES_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SES_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_SES_FROM_EMAIL: z.string().email('Invalid AWS SES from email').optional(),
+  // Default email configuration
+  EMAIL_FROM: z.string().email('Invalid default email').optional(),
+  EMAIL_FROM_NAME: z.string().optional(),
 })
 
 // Parse and validate environment variables
@@ -27,6 +40,16 @@ function getEnv() {
       TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER,
       TWILIO_API_KEY: process.env.TWILIO_API_KEY,
       TWILIO_API_SECRET: process.env.TWILIO_API_SECRET,
+      // Email configuration
+      SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
+      SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL,
+      SENDGRID_FROM_NAME: process.env.SENDGRID_FROM_NAME,
+      AWS_SES_REGION: process.env.AWS_SES_REGION,
+      AWS_SES_ACCESS_KEY_ID: process.env.AWS_SES_ACCESS_KEY_ID,
+      AWS_SES_SECRET_ACCESS_KEY: process.env.AWS_SES_SECRET_ACCESS_KEY,
+      AWS_SES_FROM_EMAIL: process.env.AWS_SES_FROM_EMAIL,
+      EMAIL_FROM: process.env.EMAIL_FROM,
+      EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME,
     })
   } catch (error) {
     if (error instanceof z.ZodError) {

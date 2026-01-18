@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authGuard } from "@/lib/auth/api-guard";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 
 // GET - Fetch doctor's patients
 export async function GET() {
@@ -16,9 +17,10 @@ export async function GET() {
 
   try {
     const supabase = await createClient();
+    const adminClient = getAdminClient();
 
-    // Get doctor's provider ID
-    const { data: provider, error: providerError } = await supabase
+    // Get doctor's provider ID - use admin client to bypass RLS
+    const { data: provider, error: providerError } = await adminClient
       .from("healthcare_providers")
       .select("id")
       .eq("user_id", user.id)
@@ -29,8 +31,8 @@ export async function GET() {
       return NextResponse.json({ patients: [] });
     }
 
-    // Get unique patients who have consulted with this doctor
-    const { data: consultations, error: consultationsError } = await supabase
+    // Get unique patients who have consulted with this doctor - use admin client to bypass RLS
+    const { data: consultations, error: consultationsError } = await adminClient
       .from("consultations")
       .select("user_id")
       .eq("provider_id", provider.id)
@@ -51,8 +53,8 @@ export async function GET() {
       return NextResponse.json({ patients: [] });
     }
 
-    // Get patient details
-    const { data: patients, error: patientsError } = await supabase
+    // Get patient details - use admin client to bypass RLS
+    const { data: patients, error: patientsError } = await adminClient
       .from("users")
       .select("*")
       .in("id", uniqueUserIds)
@@ -65,10 +67,10 @@ export async function GET() {
       );
     }
 
-    // Get consultation count per patient
+    // Get consultation count per patient - use admin client to bypass RLS
     const patientsWithStats = await Promise.all(
       (patients || []).map(async (patient) => {
-        const { count } = await supabase
+        const { count } = await adminClient
           .from("consultations")
           .select("id", { count: "exact", head: true })
           .eq("provider_id", provider.id)

@@ -8,7 +8,6 @@ import {
   Phone,
   BookOpen,
   CreditCard,
-  Users,
   User,
   LogOut,
   Settings,
@@ -73,7 +72,6 @@ export function Navigation() {
       { href: '/', label: 'Home', icon: Heart },
       { href: '/consultation', label: 'Consultations', icon: Phone },
       { href: '/education', label: 'Education', icon: BookOpen },
-      { href: '/community', label: 'Community', icon: Users },
     ]
 
     if (user?.role === 'Patient') {

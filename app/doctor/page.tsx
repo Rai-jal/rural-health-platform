@@ -31,7 +31,8 @@ interface DoctorStats {
   totalConsultations: number;
   upcomingConsultations: Array<{
     id: string;
-    scheduled_at: string;
+    scheduled_at: string | null;
+    preferred_date?: string | null;
     consultation_type: string;
     status: string;
     users: {
@@ -80,7 +81,8 @@ export default function DoctorDashboard() {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "Not scheduled";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       weekday: "short",
@@ -239,7 +241,11 @@ export default function DoctorDashboard() {
                         </Badge>
                         <Badge
                           variant={
-                            consultation.status === "scheduled"
+                            consultation.status === "assigned"
+                              ? "outline"
+                              : consultation.status === "confirmed"
+                              ? "secondary"
+                              : consultation.status === "scheduled"
                               ? "default"
                               : "secondary"
                           }
@@ -248,7 +254,11 @@ export default function DoctorDashboard() {
                         </Badge>
                       </div>
                       <p className="text-sm text-gray-600">
-                        {formatDate(consultation.scheduled_at)}
+                        {consultation.scheduled_at 
+                          ? formatDate(consultation.scheduled_at)
+                          : consultation.preferred_date
+                          ? `Preferred: ${new Date(consultation.preferred_date).toLocaleDateString()}`
+                          : "Date TBD"}
                       </p>
                       {consultation.users?.email && (
                         <p className="text-xs text-gray-500 mt-1">

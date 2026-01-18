@@ -20,6 +20,7 @@ import {
   Eye,
   Loader2,
   Save,
+  UserPlus,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/components/ui/toast";
@@ -46,8 +47,11 @@ import { Textarea } from "@/components/ui/textarea";
 interface Consultation {
   id: string;
   consultation_type: string;
+  consultation_category?: string;
   status: string;
-  scheduled_at: string;
+  scheduled_at: string | null;
+  preferred_date?: string;
+  preferred_time_range?: string;
   duration_minutes: number;
   cost_leone: number;
   reason_for_consultation?: string;
@@ -65,6 +69,15 @@ interface Consultation {
   };
 }
 
+interface HealthcareProvider {
+  id: string;
+  full_name: string;
+  specialty: string;
+  languages: string[];
+  is_available: boolean;
+  rating: number;
+}
+
 export default function ConsultationsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, isLoggedIn } = useAuth();
@@ -77,9 +90,16 @@ export default function ConsultationsPage() {
     useState<Consultation | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [providers, setProviders] = useState<HealthcareProvider[]>([]);
+  const [isLoadingProviders, setIsLoadingProviders] = useState(false);
   const [editData, setEditData] = useState({
     status: "",
     notes: "",
+  });
+  const [assignData, setAssignData] = useState({
+    provider_id: "",
+    scheduled_at: "",
   });
 
   useEffect(() => {
@@ -185,12 +205,111 @@ export default function ConsultationsPage() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "outline"> = {
+      draft: "outline",
+      pending_admin_review: "outline",
+      assigned: "secondary",
+      confirmed: "default",
       scheduled: "default",
       in_progress: "secondary",
       completed: "default",
       cancelled: "outline",
     };
     return variants[status] || "outline";
+  };
+
+  const handleAssign = async (consultation: Consultation) => {
+    setSelectedConsultation(consultation);
+    setAssignData({
+      provider_id: "",
+      scheduled_at: consultation.preferred_date || "",
+    });
+    setIsAssignDialogOpen(true);
+    fetchProvidersForAssignment(consultation);
+  };
+
+  const fetchProvidersForAssignment = async (consultation: Consultation) => {
+    try {
+      setIsLoadingProviders(true);
+      const response = await fetch("/api/healthcare-providers?available=true");
+      if (!response.ok) {
+        throw new Error("Failed to fetch providers");
+      }
+      const data = await response.json();
+      setProviders(data.data || []);
+    } catch (err) {
+      console.error("Error fetching providers:", err);
+      addToast({
+        type: "error",
+        title: "Error",
+        description: "Failed to load providers",
+      });
+    } finally {
+      setIsLoadingProviders(false);
+    }
+  };
+
+  const handleSaveAssign = async () => {
+    if (!selectedConsultation || !assignData.provider_id) {
+      addToast({
+        type: "error",
+        title: "Error",
+        description: "Please select a provider",
+      });
+      return;
+    }
+
+    try {
+      // Convert datetime-local format to ISO datetime string if provided
+      let scheduledAt: string | undefined = undefined;
+      if (assignData.scheduled_at && assignData.scheduled_at.trim() !== "") {
+        // datetime-local format is "YYYY-MM-DDTHH:mm", convert to ISO format
+        const date = new Date(assignData.scheduled_at);
+        if (!isNaN(date.getTime())) {
+          scheduledAt = date.toISOString();
+        }
+      }
+
+      const response = await fetch(
+        `/api/admin/consultations/${selectedConsultation.id}/assign`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            provider_id: assignData.provider_id,
+            scheduled_at: scheduledAt,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        // Show validation errors more clearly
+        if (error.issues && Array.isArray(error.issues)) {
+          const errorMessages = error.issues.map((issue: any) => 
+            `${issue.path.join('.')}: ${issue.message}`
+          ).join(', ');
+          throw new Error(`Validation error: ${errorMessages}`);
+        }
+        throw new Error(error.error || "Failed to assign provider");
+      }
+
+      addToast({
+        type: "success",
+        title: "Success",
+        description: "Provider assigned successfully",
+      });
+
+      setIsAssignDialogOpen(false);
+      fetchConsultations();
+    } catch (err) {
+      console.error("Error assigning provider:", err);
+      addToast({
+        type: "error",
+        title: "Error",
+        description:
+          err instanceof Error ? err.message : "Failed to assign provider",
+      });
+    }
   };
 
   const filteredConsultations = consultations.filter((c) => {
@@ -242,6 +361,9 @@ export default function ConsultationsPage() {
                 className="px-3 py-2 border rounded-md text-sm"
               >
                 <option value="all">All Status</option>
+                <option value="pending_admin_review">Pending Review</option>
+                <option value="assigned">Assigned</option>
+                <option value="confirmed">Confirmed</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
@@ -296,7 +418,11 @@ export default function ConsultationsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {formatDate(consultation.scheduled_at)}
+                      {consultation.scheduled_at
+                        ? formatDate(consultation.scheduled_at)
+                        : consultation.preferred_date
+                        ? `Preferred: ${new Date(consultation.preferred_date).toLocaleDateString()}`
+                        : "Not scheduled"}
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadge(consultation.status)}>
@@ -315,6 +441,16 @@ export default function ConsultationsPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        {consultation.status === "pending_admin_review" && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleAssign(consultation)}
+                          >
+                            <UserPlus className="h-4 w-4 mr-1" />
+                            Assign
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
@@ -381,8 +517,27 @@ export default function ConsultationsPage() {
                 </div>
                 <div>
                   <Label>Scheduled At</Label>
-                  <p>{formatDate(selectedConsultation.scheduled_at)}</p>
+                  <p>
+                    {selectedConsultation.scheduled_at
+                      ? formatDate(selectedConsultation.scheduled_at)
+                      : selectedConsultation.preferred_date
+                      ? `Preferred: ${new Date(selectedConsultation.preferred_date).toLocaleDateString()}`
+                      : "Not scheduled"}
+                  </p>
+                  {selectedConsultation.preferred_time_range && (
+                    <p className="text-sm text-gray-500">
+                      Preferred time: {selectedConsultation.preferred_time_range}
+                    </p>
+                  )}
                 </div>
+                {selectedConsultation.consultation_category && (
+                  <div>
+                    <Label>Category</Label>
+                    <p className="capitalize">
+                      {selectedConsultation.consultation_category.replace("_", " ")}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <Label>Amount</Label>
                   <p className="font-semibold">
@@ -432,6 +587,9 @@ export default function ConsultationsPage() {
                 }
                 className="w-full px-3 py-2 border rounded-md"
               >
+                <option value="pending_admin_review">Pending Review</option>
+                <option value="assigned">Assigned</option>
+                <option value="confirmed">Confirmed</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
@@ -461,6 +619,102 @@ export default function ConsultationsPage() {
             <Button onClick={handleSaveEdit}>
               <Save className="h-4 w-4 mr-2" />
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Provider Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Assign Healthcare Provider</DialogTitle>
+            <DialogDescription>
+              Select a provider for this consultation request
+            </DialogDescription>
+          </DialogHeader>
+          {selectedConsultation && (
+            <div className="space-y-4 py-4">
+              <div className="bg-gray-50 p-4 rounded-md">
+                <p className="text-sm font-medium mb-2">Request Details:</p>
+                <div className="text-sm space-y-1">
+                  <p>
+                    <span className="font-medium">Patient:</span>{" "}
+                    {selectedConsultation.users?.full_name}
+                  </p>
+                  <p>
+                    <span className="font-medium">Type:</span>{" "}
+                    {selectedConsultation.consultation_type}
+                  </p>
+                  {selectedConsultation.consultation_category && (
+                    <p>
+                      <span className="font-medium">Category:</span>{" "}
+                      {selectedConsultation.consultation_category.replace("_", " ")}
+                    </p>
+                  )}
+                  {selectedConsultation.preferred_date && (
+                    <p>
+                      <span className="font-medium">Preferred Date:</span>{" "}
+                      {new Date(selectedConsultation.preferred_date).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="provider">Select Provider *</Label>
+                {isLoadingProviders ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Loading providers...
+                  </div>
+                ) : (
+                  <select
+                    id="provider"
+                    value={assignData.provider_id}
+                    onChange={(e) =>
+                      setAssignData({ ...assignData, provider_id: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border rounded-md"
+                  >
+                    <option value="">Select a provider...</option>
+                    {providers.map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.full_name} - {provider.specialty}
+                        {provider.is_available ? " (Available)" : " (Unavailable)"}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="scheduled_at">Scheduled Date & Time (Optional)</Label>
+                <Input
+                  id="scheduled_at"
+                  type="datetime-local"
+                  value={assignData.scheduled_at}
+                  onChange={(e) =>
+                    setAssignData({ ...assignData, scheduled_at: e.target.value })
+                  }
+                  min={new Date().toISOString().slice(0, 16)}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave empty to use patient's preferred date
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsAssignDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveAssign} disabled={!assignData.provider_id}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Assign Provider
             </Button>
           </DialogFooter>
         </DialogContent>

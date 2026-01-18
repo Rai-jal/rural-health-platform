@@ -14,8 +14,6 @@ import {
   isSupabaseConfigured,
   type HealthcareProvider,
   type HealthContent,
-  type CommunityGroup,
-  type Event,
   type Consultation,
   type User,
 } from "./supabase"
@@ -109,60 +107,6 @@ export async function incrementDownloadCount(contentId: string): Promise<void> {
   }
 }
 
-// Community Groups
-export async function getCommunityGroups(): Promise<CommunityGroup[]> {
-  if (!isSupabaseConfigured || !supabase) {
-    throw new Error("Supabase is not configured. Cannot fetch community groups.")
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("community_groups")
-      .select(`
-        *,
-        healthcare_providers (
-          full_name,
-          specialty
-        )
-      `)
-      .eq("is_active", true)
-      .order("member_count", { ascending: false })
-
-    if (error) throw error
-    return data as CommunityGroup[]
-  } catch (error) {
-    console.error("Error fetching community groups:", error)
-    throw error
-  }
-}
-
-// Events
-export async function getUpcomingEvents(): Promise<Event[]> {
-  if (!isSupabaseConfigured || !supabase) {
-    throw new Error("Supabase is not configured. Cannot fetch events.")
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from("events")
-      .select(`
-        *,
-        healthcare_providers (
-          full_name,
-          specialty
-        )
-      `)
-      .gte("scheduled_at", new Date().toISOString())
-      .order("scheduled_at", { ascending: true })
-      .limit(10)
-
-    if (error) throw error
-    return data as Event[]
-  } catch (error) {
-    console.error("Error fetching events:", error)
-    throw error
-  }
-}
 
 // Users
 export async function createUser(userData: {

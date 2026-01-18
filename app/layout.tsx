@@ -22,7 +22,7 @@ const robotoMono = Roboto_Mono({
 export const metadata: Metadata = {
   title: "HealthConnect - Health for Women",
   description:
-    "Bridging healthcare gaps for women in Sierra Leone through virtual consultations, health education, and community support.",
+    "Bridging healthcare gaps for women in Sierra Leone through virtual consultations and health education.",
   icons: {
     icon: '/icon',
   },

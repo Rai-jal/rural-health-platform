@@ -727,24 +727,6 @@ export default function PaymentsPage() {
                   </p>
                 </CardContent>
               </Card>
-
-              <Card className="text-center">
-                <CardHeader>
-                  <Wallet className="h-10 w-10 text-orange-600 mx-auto mb-2" />
-                  <CardTitle className="text-lg">Community Fund</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Apply for subsidized healthcare through community programs
-                  </p>
-                  <Badge variant="outline" className="mb-2">
-                    Financial Aid
-                  </Badge>
-                  <p className="text-xs text-gray-500">
-                    Income-based assistance
-                  </p>
-                </CardContent>
-              </Card>
             </div>
           </div>
         )}

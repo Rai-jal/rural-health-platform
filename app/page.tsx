@@ -145,7 +145,7 @@ export default function HomePage() {
             {t("features.title")}
           </h3>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Link href="/consultation">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                 <CardHeader className="text-center">
@@ -189,22 +189,6 @@ export default function HomePage() {
                 <CardContent>
                   <p className="text-sm text-muted-foreground text-center">
                     {t("features.payments_desc")}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/community">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader className="text-center">
-                  <Users className="h-10 w-10 text-orange-600 mx-auto mb-2" />
-                  <CardTitle className="text-lg">
-                    {t("features.community")}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground text-center">
-                    {t("features.community_desc")}
                   </p>
                 </CardContent>
               </Card>
@@ -336,11 +320,6 @@ export default function HomePage() {
                 <li>
                   <Link href="/payments" className="hover:text-foreground transition-colors">
                     {t("features.payments")}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/community" className="hover:text-foreground transition-colors">
-                    {t("features.community")}
                   </Link>
                 </li>
               </ul>

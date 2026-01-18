@@ -56,7 +56,7 @@ export default function PatientDashboard() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Upcoming Consultations</CardTitle>
@@ -77,15 +77,6 @@ export default function PatientDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Community Groups</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-purple-600">0</div>
-              <p className="text-sm text-muted-foreground mt-2">Join a group</p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Quick Actions */}
@@ -117,21 +108,6 @@ export default function PatientDashboard() {
                 <CardContent>
                   <Button className="w-full" variant="outline">
                     Explore <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/community">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                <CardHeader>
-                  <Users className="h-10 w-10 text-purple-600 mb-2" />
-                  <CardTitle>Community</CardTitle>
-                  <CardDescription>Join support groups</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button className="w-full" variant="outline">
-                    Join <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </CardContent>
               </Card>
@@ -179,15 +155,6 @@ export default function PatientDashboard() {
                   <h4 className="font-semibold">Access Health Education</h4>
                   <p className="text-sm text-muted-foreground">
                     Learn about health topics in your preferred language
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <Users className="h-5 w-5 text-green-600 mt-1" />
-                <div>
-                  <h4 className="font-semibold">Join Community Groups</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Connect with other patients and share experiences
                   </p>
                 </div>
               </div>

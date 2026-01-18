@@ -7,14 +7,18 @@
 export interface Consultation {
   id: string;
   user_id: string;
-  provider_id: string;
+  provider_id: string | null;
   consultation_type: "video" | "voice" | "sms";
-  scheduled_at: string;
-  cost_leone: number;
+  consultation_category?: string;
   status: string;
+  scheduled_at: string | null;
+  preferred_date?: string;
+  preferred_time_range?: string;
+  cost_leone: number;
   reason_for_consultation?: string;
   notes?: string;
   duration_minutes?: number;
+  consent_acknowledged?: boolean;
   created_at: string;
   updated_at: string;
   healthcare_providers?: {
@@ -86,43 +90,6 @@ export interface HealthContent {
   updated_at: string;
 }
 
-export interface CommunityGroup {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  language: string;
-  location?: string;
-  member_count: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  healthcare_providers?: {
-    id: string;
-    full_name: string;
-    specialty: string;
-  };
-}
-
-export interface Event {
-  id: string;
-  title: string;
-  description: string;
-  event_type: string;
-  location: string;
-  scheduled_at: string;
-  duration_minutes: number;
-  max_attendees: number;
-  current_attendees: number;
-  is_virtual: boolean;
-  created_at: string;
-  updated_at: string;
-  healthcare_providers?: {
-    id: string;
-    full_name: string;
-    specialty: string;
-  };
-}
 
 // API Response wrapper
 interface ApiResponse<T> {
@@ -149,10 +116,12 @@ async function apiCall<T>(
     const result: ApiResponse<T> = await response.json();
 
     if (!response.ok) {
+      // Include details if available
+      const errorMessage = result.error || `HTTP ${response.status}: ${response.statusText}`;
+      const details = (result as any).details;
       return {
         data: null,
-        error:
-          result.error || `HTTP ${response.status}: ${response.statusText}`,
+        error: details ? `${errorMessage}: ${details}` : errorMessage,
       };
     }
 
@@ -180,6 +149,22 @@ export async function getConsultation(id: string): Promise<{
   return apiCall<Consultation>(`/api/consultations/${id}`);
 }
 
+// Create consultation request (new admin-led workflow)
+export async function createConsultationRequest(request: {
+  consultation_type: "video" | "voice" | "sms";
+  consultation_category: "maternal_health" | "reproductive_health" | "general_inquiry" | "childcare" | "nutrition" | "other";
+  preferred_date: string;
+  preferred_time_range?: string;
+  reason_for_consultation?: string;
+  consent_acknowledged: boolean;
+}): Promise<{ data: Consultation | null; error: string | null }> {
+  return apiCall<Consultation>("/api/consultations", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+// Create consultation with provider (legacy/direct booking)
 export async function createConsultation(consultation: {
   provider_id: string;
   consultation_type: "video" | "voice" | "sms";
@@ -191,6 +176,39 @@ export async function createConsultation(consultation: {
     method: "POST",
     body: JSON.stringify(consultation),
   });
+}
+
+// Confirm consultation (patient confirms assigned provider)
+export async function confirmConsultation(
+  id: string,
+  data: {
+    provider_id: string;
+    confirmed: boolean;
+  }
+): Promise<{ consultation: Consultation | null; error: string | null }> {
+  try {
+    const response = await fetch(`/api/consultations/${id}/confirm`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return {
+        consultation: null,
+        error: result.error || "Failed to confirm consultation",
+      };
+    }
+
+    return { consultation: result.consultation, error: null };
+  } catch (error) {
+    return {
+      consultation: null,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 }
 
 export async function updateConsultation(
@@ -282,34 +300,3 @@ export async function incrementDownloadCount(
   return data;
 }
 
-// Community API
-export async function getCommunityGroups(filters?: {
-  category?: string;
-  language?: string;
-  active?: boolean;
-}): Promise<{ data: CommunityGroup[] | null; error: string | null }> {
-  const params = new URLSearchParams();
-  if (filters?.category) params.append("category", filters.category);
-  if (filters?.language) params.append("language", filters.language);
-  if (filters?.active !== undefined)
-    params.append("active", filters.active.toString());
-
-  const queryString = params.toString();
-  const url = `/api/community/groups${queryString ? `?${queryString}` : ""}`;
-
-  return apiCall<CommunityGroup[]>(url);
-}
-
-export async function getUpcomingEvents(filters?: {
-  limit?: number;
-  eventType?: string;
-}): Promise<{ data: Event[] | null; error: string | null }> {
-  const params = new URLSearchParams();
-  if (filters?.limit) params.append("limit", filters.limit.toString());
-  if (filters?.eventType) params.append("event_type", filters.eventType);
-
-  const queryString = params.toString();
-  const url = `/api/community/events${queryString ? `?${queryString}` : ""}`;
-
-  return apiCall<Event[]>(url);
-}

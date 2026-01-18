@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authGuard } from "@/lib/auth/api-guard";
 import { createClient } from "@/lib/supabase/server";
-import { createConsultationSchema } from "@/lib/validations/consultation";
+import { 
+  createConsultationSchema,
+  createConsultationRequestSchema 
+} from "@/lib/validations/consultation";
 
 // GET - Fetch user's consultations
 export async function GET() {
@@ -105,82 +108,150 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-
-    // Validate input
-    const validatedData = createConsultationSchema.parse(body);
-
     const supabase = await createClient();
 
-    // Verify provider exists and is available
-    const { data: provider, error: providerError } = await supabase
-      .from("healthcare_providers")
-      .select("id, is_available")
-      .eq("id", validatedData.provider_id)
-      .single();
+    // Determine if this is a new request workflow (no provider_id) or legacy workflow
+    const isRequestWorkflow = !body.provider_id;
 
-    if (providerError || !provider) {
-      return NextResponse.json(
-        { error: "Healthcare provider not found" },
-        { status: 404 }
-      );
-    }
+    if (isRequestWorkflow) {
+      // New workflow: Create consultation request (pending admin review)
+      const validatedData = createConsultationRequestSchema.parse(body);
 
-    if (!provider.is_available) {
-      return NextResponse.json(
-        { error: "Healthcare provider is not available" },
-        { status: 400 }
-      );
-    }
+      // Get consultation type pricing
+      const consultationPricing: Record<"video" | "voice" | "sms", number> = {
+        video: 15000,
+        voice: 10000,
+        sms: 5000,
+      };
 
-    // Create consultation
-    const { data: consultation, error: consultationError } = await supabase
-      .from("consultations")
-      .insert([
-        {
-          user_id: user.id,
-          provider_id: validatedData.provider_id,
-          consultation_type: validatedData.consultation_type,
-          scheduled_at: validatedData.scheduled_at,
-          cost_leone: validatedData.cost_leone,
-          reason_for_consultation: validatedData.reason_for_consultation,
-          status: "scheduled",
-        },
-      ])
-      .select(
+      const cost_leone = consultationPricing[validatedData.consultation_type];
+
+      // Create consultation request
+      const { data: consultation, error: consultationError } = await supabase
+        .from("consultations")
+        .insert([
+          {
+            user_id: user.id,
+            provider_id: null, // No provider assigned yet
+            consultation_type: validatedData.consultation_type,
+            consultation_category: validatedData.consultation_category,
+            preferred_date: validatedData.preferred_date,
+            preferred_time_range: validatedData.preferred_time_range || null,
+            scheduled_at: null, // Will be set when assigned
+            cost_leone: cost_leone,
+            reason_for_consultation: validatedData.reason_for_consultation,
+            consent_acknowledged: validatedData.consent_acknowledged,
+            status: "pending_admin_review",
+          },
+        ])
+        .select(
+          `
+          *,
+          users (
+            id,
+            full_name,
+            email
+          )
         `
-        *,
-        healthcare_providers (
-          id,
-          full_name,
-          specialty,
-          languages
         )
-      `
-      )
-      .single();
+        .single();
 
-    if (consultationError) {
-      console.error("Database error:", consultationError);
-      return NextResponse.json(
-        { error: "Failed to create consultation" },
-        { status: 500 }
-      );
-    }
-
-    // Notify provider about new consultation booking
-    if (consultation) {
-      try {
-        const { notifyProviderBooking } = await import("@/lib/notifications");
-        await notifyProviderBooking(consultation.id, consultation.provider_id);
-      } catch (notifError) {
-        console.error("Error sending provider notification:", notifError);
-        // Don't fail the request if notification fails
+      if (consultationError) {
+        console.error("Database error:", consultationError);
+        console.error("Error details:", JSON.stringify(consultationError, null, 2));
+        return NextResponse.json(
+          { 
+            error: "Failed to create consultation request",
+            details: consultationError.message || consultationError.code || "Unknown database error"
+          },
+          { status: 500 }
+        );
       }
-    }
 
-    return NextResponse.json({ data: consultation }, { status: 201 });
+      return NextResponse.json({ data: consultation }, { status: 201 });
+    } else {
+      // Legacy workflow: Create consultation with provider (backward compatibility)
+      const validatedData = createConsultationSchema.parse(body);
+
+      if (!validatedData.provider_id) {
+        return NextResponse.json(
+          { error: "Provider ID is required for direct booking" },
+          { status: 400 }
+        );
+      }
+
+      // Verify provider exists and is available
+      const { data: provider, error: providerError } = await supabase
+        .from("healthcare_providers")
+        .select("id, is_available")
+        .eq("id", validatedData.provider_id)
+        .single();
+
+      if (providerError || !provider) {
+        return NextResponse.json(
+          { error: "Healthcare provider not found" },
+          { status: 404 }
+        );
+      }
+
+      if (!provider.is_available) {
+        return NextResponse.json(
+          { error: "Healthcare provider is not available" },
+          { status: 400 }
+        );
+      }
+
+      // Create consultation
+      const { data: consultation, error: consultationError } = await supabase
+        .from("consultations")
+        .insert([
+          {
+            user_id: user.id,
+            provider_id: validatedData.provider_id,
+            consultation_type: validatedData.consultation_type,
+            scheduled_at: validatedData.scheduled_at,
+            cost_leone: validatedData.cost_leone,
+            reason_for_consultation: validatedData.reason_for_consultation,
+            status: "scheduled",
+          },
+        ])
+        .select(
+          `
+          *,
+          healthcare_providers (
+            id,
+            full_name,
+            specialty,
+            languages
+          )
+        `
+        )
+        .single();
+
+      if (consultationError) {
+        console.error("Database error:", consultationError);
+        return NextResponse.json(
+          { error: "Failed to create consultation" },
+          { status: 500 }
+        );
+      }
+
+      // Notify provider about new consultation booking
+      if (consultation && consultation.provider_id) {
+        try {
+          const { notifyProviderBooking } = await import("@/lib/notifications");
+          await notifyProviderBooking(consultation.id, consultation.provider_id);
+        } catch (notifError) {
+          console.error("Error sending provider notification:", notifError);
+          // Don't fail the request if notification fails
+        }
+      }
+
+      return NextResponse.json({ data: consultation }, { status: 201 });
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error("Validation error:", error.errors);
       return NextResponse.json(
         { error: "Validation error", details: error.errors },
         { status: 400 }
@@ -188,8 +259,9 @@ export async function POST(request: Request) {
     }
 
     console.error("Unexpected error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

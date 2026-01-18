@@ -46,14 +46,18 @@ export interface HealthcareProvider {
 export interface Consultation {
   id: string
   user_id: string
-  provider_id: string
+  provider_id: string | null // Can be null until assigned by admin
   consultation_type: "video" | "voice" | "sms"
-  status: "scheduled" | "in_progress" | "completed" | "cancelled"
-  scheduled_at: string
+  consultation_category?: string // e.g., "maternal_health", "reproductive_health", "general_inquiry"
+  status: "draft" | "pending_admin_review" | "assigned" | "confirmed" | "scheduled" | "in_progress" | "completed" | "cancelled"
+  scheduled_at: string | null // Can be null until confirmed
+  preferred_date?: string // Patient's preferred date
+  preferred_time_range?: string // Patient's preferred time range
   duration_minutes: number
   cost_leone: number
   reason_for_consultation?: string
   notes?: string
+  consent_acknowledged?: boolean
   created_at: string
   updated_at: string
   healthcare_providers?: HealthcareProvider
