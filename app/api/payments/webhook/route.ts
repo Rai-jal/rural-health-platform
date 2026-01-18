@@ -1,46 +1,126 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { headers } from "next/headers";
 import { paymentGateway } from "@/lib/payment/gateway";
 
-// POST - Payment webhook handler
-// This endpoint receives callbacks from payment gateways
+/**
+ * POST - Payment webhook handler
+ * 
+ * Receives callbacks from Flutterwave when payment status changes.
+ * 
+ * Flutterwave Webhook Events:
+ * - charge.completed: Payment completed successfully
+ * - charge.successful: Payment successful (same as completed)
+ * 
+ * Security:
+ * - Verifies webhook signature using Flutterwave webhook secret
+ * - Only processes verified webhooks
+ * - Updates payment status and consultation automatically
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const headersList = headers();
-    const paymentMethod = headersList.get("x-payment-method") || "orange_money"; // Default
     
-    // Verify webhook signature from payment gateway
-    // TODO: Implement signature verification based on payment gateway
-    // This is critical for security - never trust webhooks without verification
-    // Example:
-    // const signature = headersList.get("x-signature");
-    // const isValid = await verifyWebhookSignature(body, signature, paymentMethod);
-    // if (!isValid) {
-    //   return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-    // }
+    // Get Flutterwave webhook signature from headers
+    // Flutterwave sends signature in 'verif-hash' header (or 'x-flutterwave-signature')
+    const signature =
+      headersList.get("verif-hash") ||
+      headersList.get("x-flutterwave-signature") ||
+      headersList.get("x-signature") ||
+      "";
 
     // Process webhook through payment gateway service
-    const verification = await paymentGateway.handleWebhook(body, paymentMethod);
+    // This verifies signature and extracts transaction details
+    const verification = await paymentGateway.handleWebhook(body, signature);
 
     if (!verification.verified) {
+      console.error("Webhook verification failed:", {
+        hasSignature: !!signature,
+        reference: verification.reference,
+      });
       return NextResponse.json(
-        { error: "Webhook verification failed" },
-        { status: 400 }
+        { error: "Webhook verification failed - invalid signature" },
+        { status: 401 }
       );
     }
 
-    const supabase = await createClient();
+    // Use admin client to bypass RLS for webhook updates
+    const adminClient = getAdminClient();
+
+    // Find payment by transaction reference (Flutterwave tx_ref or transaction_id)
+    // Try reference first (most reliable), then transaction_id
+    let payment = null;
+    let updateError = null;
+
+    // Try to find payment by reference (from Flutterwave tx_ref)
+    // Flutterwave tx_ref is stored in transaction_id field
+    if (verification.reference) {
+      const result = await adminClient
+        .from("payments")
+        .select(
+          `
+          *,
+          consultations (
+            id,
+            status,
+            user_id
+          )
+        `
+        )
+        .eq("transaction_id", verification.reference)
+        .maybeSingle();
+
+      if (result.data) {
+        payment = result.data;
+      }
+    }
+
+    // If not found by reference, try transaction_id
+    if (!payment && verification.transactionId) {
+      const result = await adminClient
+        .from("payments")
+        .select(
+          `
+          *,
+          consultations (
+            id,
+            status,
+            user_id
+          )
+        `
+        )
+        .eq("transaction_id", verification.transactionId)
+        .limit(1)
+        .single();
+
+      if (result.data) {
+        payment = result.data;
+      }
+    }
+
+    // If still not found, payment might not exist yet (shouldn't happen but handle gracefully)
+    if (!payment) {
+      console.warn("Payment not found for webhook:", {
+        reference: verification.reference,
+        transactionId: verification.transactionId,
+      });
+      // Return success to Flutterwave so they don't retry, but log the issue
+      return NextResponse.json({
+        message: "Webhook received but payment not found",
+        reference: verification.reference,
+      });
+    }
 
     // Update payment status
-    const { data: payment, error: updateError } = await supabase
+    const { data: updatedPayment, error: updateErr } = await adminClient
       .from("payments")
       .update({
         payment_status: verification.status,
         updated_at: new Date().toISOString(),
       })
-      .eq("transaction_id", verification.transactionId)
+      .eq("id", payment.id)
       .select(
         `
         *,
@@ -53,18 +133,20 @@ export async function POST(request: Request) {
       )
       .single();
 
-    if (updateError) {
-      console.error("Database error:", updateError);
+    if (updateErr || !updatedPayment) {
+      console.error("Database error updating payment:", updateErr);
       return NextResponse.json(
         { error: "Failed to update payment" },
         { status: 500 }
       );
     }
 
+    payment = updatedPayment;
+
     // If payment completed, update consultation status and send notifications
     if (verification.status === "completed" && payment && payment.consultations) {
       // Update consultation status to confirmed
-      await supabase
+      await adminClient
         .from("consultations")
         .update({
           status: "scheduled",
@@ -86,10 +168,11 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ 
-      message: "Webhook processed successfully", 
-      data: payment,
-      verification 
+    // Return success to Flutterwave immediately
+    // This prevents retries and is important for webhook reliability
+    return NextResponse.json({
+      message: "Webhook processed successfully",
+      status: "success",
     });
   } catch (error) {
     console.error("Webhook error:", error);

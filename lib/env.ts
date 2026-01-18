@@ -25,6 +25,13 @@ const envSchema = z.object({
   // Default email configuration
   EMAIL_FROM: z.string().email('Invalid default email').optional(),
   EMAIL_FROM_NAME: z.string().optional(),
+  // Flutterwave Payment Gateway Configuration (optional)
+  FLUTTERWAVE_PUBLIC_KEY: z.string().optional(),
+  FLUTTERWAVE_SECRET_KEY: z.string().optional(),
+  FLUTTERWAVE_ENCRYPTION_KEY: z.string().optional(),
+  FLUTTERWAVE_WEBHOOK_SECRET: z.string().optional(),
+  FLUTTERWAVE_MODE: z.enum(['sandbox', 'live']).optional(),
+  ENABLE_MOCK_PAYMENTS: z.string().optional(),
 })
 
 // Parse and validate environment variables
@@ -50,6 +57,13 @@ function getEnv() {
       AWS_SES_FROM_EMAIL: process.env.AWS_SES_FROM_EMAIL,
       EMAIL_FROM: process.env.EMAIL_FROM,
       EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME,
+      // Flutterwave Payment Gateway Configuration (optional)
+      FLUTTERWAVE_PUBLIC_KEY: process.env.FLUTTERWAVE_PUBLIC_KEY,
+      FLUTTERWAVE_SECRET_KEY: process.env.FLUTTERWAVE_SECRET_KEY,
+      FLUTTERWAVE_ENCRYPTION_KEY: process.env.FLUTTERWAVE_ENCRYPTION_KEY,
+      FLUTTERWAVE_WEBHOOK_SECRET: process.env.FLUTTERWAVE_WEBHOOK_SECRET,
+      FLUTTERWAVE_MODE: process.env.FLUTTERWAVE_MODE,
+      ENABLE_MOCK_PAYMENTS: process.env.ENABLE_MOCK_PAYMENTS,
     })
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -122,18 +122,32 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get user profile for payment details
+    const { data: userProfile } = await supabase
+      .from("users")
+      .select("full_name, email, phone_number")
+      .eq("id", user.id)
+      .single();
+
     // Import payment gateway service
     const { paymentGateway } = await import("@/lib/payment/gateway");
 
-    // Initiate payment through gateway
-    // The gateway will generate its own transaction ID
+    // Build redirect URL for payment callback (for card/redirect flows)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const redirectUrl = `${appUrl}/payments/callback`;
+
+    // Initiate payment through Flutterwave gateway
+    // The gateway will generate its own transaction ID and reference
     const gatewayResponse = await paymentGateway.initiatePayment({
       amount: validatedData.amount_leone,
-      phoneNumber: body.phone_number || user.phone_number, // Use provided or user's phone
+      phoneNumber: body.phone_number || userProfile?.phone_number || user.phone_number,
+      email: body.email || userProfile?.email || user.email || `user${user.id}@healthconnect.app`,
+      customerName: userProfile?.full_name || profile.full_name || "Customer",
       paymentMethod: validatedData.payment_method as any,
       consultationId: validatedData.consultation_id,
       userId: user.id,
       description: `Consultation payment - ${consultation.consultation_type || "Consultation"}`,
+      redirectUrl,
     });
 
     // Check if gateway initiation was successful
@@ -150,7 +164,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create payment record with gateway transaction ID
+    // Create payment record with Flutterwave transaction ID and reference
+    // Store reference for webhook matching (more reliable than transaction ID)
     const { data: payment, error: paymentError } = await supabase
       .from("payments")
       .insert([
@@ -159,9 +174,9 @@ export async function POST(request: Request) {
           user_id: user.id,
           amount_leone: validatedData.amount_leone,
           payment_method: validatedData.payment_method,
-          payment_provider: validatedData.payment_provider || validatedData.payment_method,
+          payment_provider: validatedData.payment_provider || "flutterwave", // Default to Flutterwave
           payment_status: gatewayResponse.status,
-          transaction_id: gatewayResponse.transactionId,
+          transaction_id: gatewayResponse.reference || gatewayResponse.transactionId, // Use reference (tx_ref) as primary ID
         },
       ])
       .select(
@@ -185,13 +200,17 @@ export async function POST(request: Request) {
     }
 
     // Return payment with gateway response
+    // Include payment link for redirect-based payments (card payments)
     return NextResponse.json(
       {
         data: payment,
         gateway: {
           success: gatewayResponse.success,
           message: gatewayResponse.message,
-          paymentInstructions: gatewayResponse.paymentInstructions,
+          paymentLink: gatewayResponse.paymentLink, // For card/redirect payments
+          paymentInstructions: gatewayResponse.paymentInstructions, // For mobile money/USSD
+          reference: gatewayResponse.reference, // Flutterwave transaction reference
+          transactionId: gatewayResponse.transactionId,
         },
         message: gatewayResponse.message,
       },
