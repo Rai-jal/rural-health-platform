@@ -30,8 +30,14 @@ const envSchema = z.object({
   FLUTTERWAVE_SECRET_KEY: z.string().optional(),
   FLUTTERWAVE_ENCRYPTION_KEY: z.string().optional(),
   FLUTTERWAVE_WEBHOOK_SECRET: z.string().optional(),
+  FLUTTERWAVE_SECRET_HASH: z.string().optional(), // Alias for FLUTTERWAVE_WEBHOOK_SECRET
   FLUTTERWAVE_MODE: z.enum(['sandbox', 'live']).optional(),
   ENABLE_MOCK_PAYMENTS: z.string().optional(),
+  // Cron job security (optional but recommended)
+  CRON_SECRET: z.string().optional(),
+  // Sentry Error Monitoring Configuration (optional)
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url('Invalid Sentry DSN').optional(),
+  NEXT_PUBLIC_APP_VERSION: z.string().optional(),
 })
 
 // Parse and validate environment variables
@@ -61,9 +67,15 @@ function getEnv() {
       FLUTTERWAVE_PUBLIC_KEY: process.env.FLUTTERWAVE_PUBLIC_KEY,
       FLUTTERWAVE_SECRET_KEY: process.env.FLUTTERWAVE_SECRET_KEY,
       FLUTTERWAVE_ENCRYPTION_KEY: process.env.FLUTTERWAVE_ENCRYPTION_KEY,
-      FLUTTERWAVE_WEBHOOK_SECRET: process.env.FLUTTERWAVE_WEBHOOK_SECRET,
+      FLUTTERWAVE_WEBHOOK_SECRET: process.env.FLUTTERWAVE_WEBHOOK_SECRET || process.env.FLUTTERWAVE_SECRET_HASH, // Support both names
+      FLUTTERWAVE_SECRET_HASH: process.env.FLUTTERWAVE_SECRET_HASH || process.env.FLUTTERWAVE_WEBHOOK_SECRET, // Alias
       FLUTTERWAVE_MODE: process.env.FLUTTERWAVE_MODE,
       ENABLE_MOCK_PAYMENTS: process.env.ENABLE_MOCK_PAYMENTS,
+      // Cron job security
+      CRON_SECRET: process.env.CRON_SECRET,
+      // Sentry configuration
+      NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+      NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION,
     })
   } catch (error) {
     if (error instanceof z.ZodError) {

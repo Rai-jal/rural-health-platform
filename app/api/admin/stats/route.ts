@@ -21,6 +21,7 @@ export async function GET() {
       usersResult,
       consultationsResult,
       paymentsResult,
+      pendingPaymentsResult,
       providersResult,
       recentUsersResult,
       recentConsultationsResult,
@@ -36,6 +37,12 @@ export async function GET() {
         .from("payments")
         .select("amount_leone")
         .eq("payment_status", "completed"),
+      
+      // Total pending revenue (for visibility)
+      supabase
+        .from("payments")
+        .select("amount_leone")
+        .eq("payment_status", "pending"),
       
       // Total healthcare providers count
       supabase
@@ -57,11 +64,21 @@ export async function GET() {
         .select("id", { count: "exact", head: true }),
     ]);
 
-    // Calculate total revenue
+    // Calculate total revenue (completed payments)
     const totalRevenue = paymentsResult.data?.reduce(
       (sum, payment) => sum + (payment.amount_leone || 0),
       0
     ) || 0;
+
+    // Calculate pending revenue (for visibility)
+    const pendingRevenue = pendingPaymentsResult.data?.reduce(
+      (sum, payment) => sum + (payment.amount_leone || 0),
+      0
+    ) || 0;
+
+    // Total revenue including both completed and pending (for dashboard display)
+    // This ensures revenue shows even if webhooks haven't updated status yet
+    const totalRevenueIncludingPending = totalRevenue + pendingRevenue;
 
     // Get pending consultations count
     const { count: pendingConsultations } = await supabase
@@ -95,7 +112,9 @@ export async function GET() {
       stats: {
         totalUsers: usersResult.count || 0,
         totalConsultations: consultationsResult.count || 0,
-        totalRevenue,
+        totalRevenue: totalRevenueIncludingPending, // Include pending payments for visibility
+        totalRevenueCompleted: totalRevenue, // Completed payments only
+        totalRevenuePending: pendingRevenue, // Pending payments only
         totalHealthcareProviders: providersResult.count || 0,
         pendingConsultations: pendingConsultations || 0,
         completedConsultations: completedConsultations || 0,

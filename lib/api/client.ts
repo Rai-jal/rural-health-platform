@@ -157,6 +157,9 @@ export async function createConsultationRequest(request: {
   preferred_time_range?: string;
   reason_for_consultation?: string;
   consent_acknowledged: boolean;
+  // ✅ FIX: Add patient_phone and patient_name
+  patient_phone?: string;
+  patient_name?: string;
 }): Promise<{ data: Consultation | null; error: string | null }> {
   return apiCall<Consultation>("/api/consultations", {
     method: "POST",

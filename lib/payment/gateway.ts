@@ -472,6 +472,102 @@ class PaymentGatewayService {
   }
 
   /**
+   * Process refund via Flutterwave API
+   * 
+   * @param transactionId - Flutterwave transaction ID or reference
+   * @param amount - Amount to refund (optional, defaults to full refund)
+   * @returns Refund result with status and details
+   */
+  async refundPayment(
+    transactionId: string,
+    amount?: number
+  ): Promise<{
+    success: boolean;
+    refundId?: string;
+    message: string;
+    error?: string;
+  }> {
+    try {
+      // Use mock refund if Flutterwave not configured
+      if (this.shouldUseMock()) {
+        console.warn("⚠️  Using MOCK refund - Not for production!");
+        return {
+          success: true,
+          refundId: `MOCK-REFUND-${Date.now()}`,
+          message: "[MOCK] Refund processed (database only)",
+        };
+      }
+
+      if (!this.isFlutterwaveConfigured()) {
+        throw new Error(
+          "Flutterwave is not configured. Set FLUTTERWAVE_SECRET_KEY environment variable."
+        );
+      }
+
+      const secretKey = this.getSecretKey();
+      
+      // Remove FLW- prefix if present
+      const cleanTransactionId = transactionId.replace("FLW-", "");
+
+      // Prepare refund payload
+      const refundPayload: any = {
+        transaction_id: cleanTransactionId,
+      };
+
+      // If amount specified, do partial refund; otherwise full refund
+      if (amount && amount > 0) {
+        refundPayload.amount = amount;
+      }
+
+      console.log("🔄 Processing refund via Flutterwave:", {
+        transactionId: cleanTransactionId,
+        amount: amount || "full",
+      });
+
+      const response = await fetch(`${this.baseUrl}/transactions/${cleanTransactionId}/refund`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(refundPayload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.status !== "success") {
+        const errorMessage = data.message || "Refund failed";
+        console.error("❌ Flutterwave refund error:", errorMessage);
+        return {
+          success: false,
+          message: errorMessage,
+          error: errorMessage,
+        };
+      }
+
+      const refundData = data.data;
+      console.log("✅ Refund processed successfully:", {
+        refundId: refundData.id,
+        amount: refundData.amount,
+        status: refundData.status,
+      });
+
+      return {
+        success: true,
+        refundId: refundData.id?.toString() || `REF-${Date.now()}`,
+        message: `Refund processed successfully. Amount: ${refundData.amount} ${refundData.currency || "SLL"}`,
+      };
+    } catch (error) {
+      console.error("❌ Refund processing error:", error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown refund error",
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
    * Map Flutterwave transaction status to our status
    */
   private mapFlutterwaveStatus(flutterwaveStatus: string): "pending" | "completed" | "failed" {

@@ -27,13 +27,13 @@ export async function GET() {
       healthContentResult,
       paymentsResult,
     ] = await Promise.all([
-      // Upcoming consultations
+      // Upcoming consultations (include assigned, confirmed, scheduled, in_progress)
+      // Check both scheduled_at and preferred_date for future dates
       supabase
         .from("consultations")
-        .select("id", { count: "exact", head: true })
+        .select("id, scheduled_at, preferred_date, status", { count: "exact", head: false })
         .eq("user_id", user.id)
-        .in("status", ["scheduled", "in_progress"])
-        .gte("scheduled_at", today.toISOString()),
+        .in("status", ["assigned", "confirmed", "scheduled", "in_progress"]),
 
       // Total consultations
       supabase
@@ -48,11 +48,12 @@ export async function GET() {
         .select("download_count")
         .limit(1000), // Get all content to sum downloads
 
-      // Total payments
+      // Total payments (both completed and pending)
       supabase
         .from("payments")
         .select("amount_leone, payment_status")
-        .eq("user_id", user.id),
+        .eq("user_id", user.id)
+        .in("payment_status", ["completed", "pending"]),
     ]);
 
     // Calculate total health content views (using download count as proxy)
@@ -62,24 +63,38 @@ export async function GET() {
       0
     ) || 0;
 
-    // Calculate total payments
+    // Calculate total payments (include both completed and pending)
+    // This ensures payments show even if webhooks haven't updated status yet
     const totalPayments = paymentsResult.data?.reduce(
-      (sum, payment) => {
-        if (payment.payment_status === "completed") {
-          return sum + (payment.amount_leone || 0);
-        }
-        return sum;
-      },
+      (sum, payment) => sum + (payment.amount_leone || 0),
       0
     ) || 0;
 
-    // Get recent consultations
+    // Calculate upcoming consultations count
+    // Filter consultations that are upcoming (scheduled_at or preferred_date in future, or no date set)
+    const upcomingConsultations = (upcomingConsultationsResult.data || []).filter((consultation) => {
+      // If has scheduled_at, check if it's in the future
+      if (consultation.scheduled_at) {
+        const scheduledDate = new Date(consultation.scheduled_at);
+        return scheduledDate >= today;
+      }
+      // If has preferred_date, check if it's in the future
+      if (consultation.preferred_date) {
+        const preferredDate = new Date(consultation.preferred_date);
+        return preferredDate >= today;
+      }
+      // If no date set but status is assigned/confirmed, count as upcoming
+      return ["assigned", "confirmed"].includes(consultation.status);
+    }).length;
+
+    // Get recent consultations with payment information
     const { data: recentConsultations } = await supabase
       .from("consultations")
       .select(
         `
         id,
         scheduled_at,
+        preferred_date,
         consultation_type,
         status,
         cost_leone,
@@ -87,16 +102,22 @@ export async function GET() {
           id,
           full_name,
           specialty
+        ),
+        payments (
+          id,
+          payment_status,
+          amount_leone,
+          payment_method
         )
       `
       )
       .eq("user_id", user.id)
-      .order("scheduled_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(5);
 
     return NextResponse.json({
       stats: {
-        upcomingConsultations: upcomingConsultationsResult.count || 0,
+        upcomingConsultations: upcomingConsultations,
         healthContentViewed,
         totalPayments,
         totalConsultations: totalConsultationsResult.count || 0,

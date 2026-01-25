@@ -174,6 +174,18 @@ export class EmailService {
 
   /**
    * Send email via AWS SES API
+   * 
+   * IMPORTANT: This implementation requires @aws-sdk/client-ses to be installed
+   * for production use. AWS SES requires proper Signature v4 signing which cannot
+   * be implemented with simple fetch requests.
+   * 
+   * To use AWS SES:
+   * 1. Install: npm install @aws-sdk/client-ses
+   * 2. Configure AWS credentials in .env.local
+   * 3. The SDK will be used automatically if installed
+   * 
+   * For now, this returns an error directing users to install the SDK.
+   * Most users should use SendGrid instead (simpler setup).
    */
   private async sendViaSES(options: EmailOptions): Promise<EmailResponse> {
     if (!this.sesAccessKeyId || !this.sesSecretAccessKey || !this.sesRegion) {
@@ -183,62 +195,75 @@ export class EmailService {
       };
     }
 
+    // Check if AWS SDK is installed at runtime
+    // Use a runtime require check to avoid Next.js build-time module analysis
+    let awsSDK: any = null;
+    try {
+      // Check if we're in Node.js environment and module exists
+      if (typeof require !== 'undefined') {
+        // Try to require the module - this won't be analyzed at build time
+        const requireFunc = require;
+        awsSDK = requireFunc('@aws-sdk/client-ses');
+      } else {
+        throw new Error('require not available');
+      }
+    } catch (e: any) {
+      // AWS SDK not installed or not in Node.js environment
+      const errorMsg = e?.code === 'MODULE_NOT_FOUND' || e?.message?.includes('require')
+        ? "AWS SDK not installed. To use AWS SES, install @aws-sdk/client-ses: npm install @aws-sdk/client-ses. Alternatively, use SendGrid (simpler setup)."
+        : "AWS SES requires Node.js environment. Use SendGrid for simpler setup.";
+      
+      return {
+        success: false,
+        error: errorMsg,
+      };
+    }
+
+    // If we get here, AWS SDK is available
     const fromEmail = options.from || this.sesFromEmail || this.defaultFromEmail;
 
     try {
-      // AWS SES requires signature v4 signing
-      // For simplicity, we'll use a simplified approach with fetch
-      // In production, consider using AWS SDK (@aws-sdk/client-ses)
-      const response = await fetch(
-        `https://email.${this.sesRegion}.amazonaws.com/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-amz-json-1.0",
-            "X-Amz-Target": "AWSSimpleEmailService.SendEmail",
+      const { SESClient, SendEmailCommand } = awsSDK;
+      
+      const sesClient = new SESClient({
+        region: this.sesRegion,
+        credentials: {
+          accessKeyId: this.sesAccessKeyId!,
+          secretAccessKey: this.sesSecretAccessKey!,
+        },
+      });
+
+      const command = new SendEmailCommand({
+        Source: fromEmail,
+        Destination: {
+          ToAddresses: [options.to],
+        },
+        Message: {
+          Subject: {
+            Data: options.subject,
+            Charset: "UTF-8",
           },
-          body: JSON.stringify({
-            Source: fromEmail,
-            Destination: {
-              ToAddresses: [options.to],
+          Body: {
+            Html: {
+              Data: options.html,
+              Charset: "UTF-8",
             },
-            Message: {
-              Subject: {
-                Data: options.subject,
-                Charset: "UTF-8",
-              },
-              Body: {
-                Html: {
-                  Data: options.html,
-                  Charset: "UTF-8",
-                },
-                ...(options.text
-                  ? {
-                      Text: {
-                        Data: options.text,
-                        Charset: "UTF-8",
-                      },
-                    }
-                  : {}),
-              },
-            },
-          }),
-        }
-      );
+            ...(options.text
+              ? {
+                  Text: {
+                    Data: options.text,
+                    Charset: "UTF-8",
+                  },
+                }
+              : {}),
+          },
+        },
+      });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("AWS SES API error:", errorText);
-        return {
-          success: false,
-          error: `AWS SES API error: ${response.status}`,
-        };
-      }
-
-      const data = await response.json();
+      const response = await sesClient.send(command);
       return {
         success: true,
-        messageId: data.MessageId,
+        messageId: response.MessageId,
       };
     } catch (error) {
       console.error("AWS SES error:", error);

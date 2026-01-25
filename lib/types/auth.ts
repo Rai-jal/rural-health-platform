@@ -1,6 +1,9 @@
 // User roles
 export type UserRole = 'Patient' | 'Doctor' | 'Admin'
 
+// Notification preferences type
+export type NotificationPreference = 'sms' | 'email' | 'both'
+
 // User profile type (matches database schema)
 export interface UserProfile {
   id: string
@@ -11,6 +14,7 @@ export interface UserProfile {
   preferred_language: string
   location?: string | null
   role: UserRole
+  notification_preferences?: NotificationPreference // Default: 'sms' (backward compatible)
   created_at: string
   updated_at: string
 }

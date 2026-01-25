@@ -165,26 +165,109 @@ export default function EducationPage() {
 
   const handleDownload = async (contentId: string) => {
     try {
-      const result = await incrementDownloadCount(contentId);
-      if (result) {
-        // Update local state to reflect the increment
-        setHealthContent((prev) =>
-          prev.map((content) =>
-            content.id === contentId
-              ? { ...content, download_count: result.download_count }
-              : content
-          )
-        );
+      // Find the content item
+      const content = healthContent.find((c) => c.id === contentId);
+      if (!content) {
+        addToast({
+          type: "error",
+          title: "Download Failed",
+          description: "Content not found.",
+        });
+        return;
+      }
+
+      // Determine which file to download based on content type
+      let fileUrl: string | null = null;
+      let fileName: string = content.title;
+
+      if (content.content_type === "audio" && content.audio_url) {
+        fileUrl = content.audio_url;
+        fileName = `${content.title}.mp3`;
+      } else if (content.content_type === "video" && content.video_url) {
+        fileUrl = content.video_url;
+        fileName = `${content.title}.mp4`;
+      } else if (content.content_type === "article" && content.content_text) {
+        // For articles, create a text file from content_text
+        const blob = new Blob([content.content_text], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${content.title}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        // Increment download count
+        const result = await incrementDownloadCount(contentId);
+        if (result) {
+          setHealthContent((prev) =>
+            prev.map((c) =>
+              c.id === contentId
+                ? { ...c, download_count: result.download_count }
+                : c
+            )
+          );
+        }
+
         addToast({
           type: "success",
           title: "Downloaded",
           description: "Content downloaded successfully!",
         });
-      } else {
+        return;
+      }
+
+      // If no file URL available, show error
+      if (!fileUrl) {
         addToast({
           type: "error",
           title: "Download Failed",
-          description: "Failed to download content. Please try again.",
+          description: "No file available for download.",
+        });
+        return;
+      }
+
+      // Download the file
+      try {
+        const response = await fetch(fileUrl);
+        if (!response.ok) {
+          throw new Error("Failed to fetch file");
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        // Increment download count
+        const result = await incrementDownloadCount(contentId);
+        if (result) {
+          setHealthContent((prev) =>
+            prev.map((c) =>
+              c.id === contentId
+                ? { ...c, download_count: result.download_count }
+                : c
+            )
+          );
+        }
+
+        addToast({
+          type: "success",
+          title: "Downloaded",
+          description: "Content downloaded successfully!",
+        });
+      } catch (downloadError) {
+        console.error("Error downloading file:", downloadError);
+        addToast({
+          type: "error",
+          title: "Download Failed",
+          description: "Failed to download file. Please check the file URL.",
         });
       }
     } catch (error) {

@@ -6,6 +6,7 @@
 import { smsService } from "./sms";
 import { emailService } from "./email";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { shouldSendSMS, shouldSendEmail } from "./preferences";
 
 export interface NotificationData {
   consultationId: string;
@@ -24,7 +25,7 @@ export async function notifyProviderBooking(
   try {
     const adminClient = getAdminClient();
 
-    // Get provider details
+    // Get provider details with notification preferences
     const { data: provider } = await adminClient
       .from("healthcare_providers")
       .select(
@@ -34,7 +35,8 @@ export async function notifyProviderBooking(
           id,
           full_name,
           phone_number,
-          email
+          email,
+          notification_preferences
         )
       `
       )
@@ -75,36 +77,86 @@ export async function notifyProviderBooking(
         ? "Voice Call"
         : "SMS Consultation";
 
-    // Send SMS notification
-    if (provider.users.phone_number && consultation.scheduled_at) {
-      await smsService.sendProviderBookingNotification(
+    // Send SMS notification (respect user preferences)
+    if (
+      shouldSendSMS(provider.users.notification_preferences) &&
+      provider.users.phone_number &&
+      consultation.scheduled_at
+    ) {
+      const smsResult = await smsService.sendProviderBookingNotification(
         provider.users.phone_number,
         patientName,
         consultationType,
         consultation.scheduled_at
       );
-    } else if (provider.users.phone_number) {
+      
+      if (!smsResult.success) {
+        console.error("SMS notification failed for provider booking:", {
+          consultationId,
+          providerId,
+          phoneNumber: provider.users.phone_number,
+          error: smsResult.error,
+          messageId: smsResult.messageId,
+        });
+      } else {
+        console.log("SMS notification sent successfully:", {
+          consultationId,
+          providerId,
+          messageId: smsResult.messageId,
+        });
+      }
+    } else if (
+      shouldSendSMS(provider.users.notification_preferences) &&
+      provider.users.phone_number
+    ) {
       // If no scheduled_at, send a notification without date
       const message = `New Consultation Request\n\nPatient: ${patientName}\nType: ${consultationType}\n\nPlease log in to view details.`;
-      await smsService.sendSMS({
+      const smsResult = await smsService.sendSMS({
         to: provider.users.phone_number,
         message,
       });
+      
+      if (!smsResult.success) {
+        console.error("SMS notification failed (no scheduled_at):", {
+          consultationId,
+          providerId,
+          phoneNumber: provider.users.phone_number,
+          error: smsResult.error,
+        });
+      } else {
+        console.log("SMS notification sent successfully (no scheduled_at):", {
+          consultationId,
+          messageId: smsResult.messageId,
+        });
+      }
+    } else {
+      // Log why SMS was not sent
+      console.log("SMS not sent for provider booking:", {
+        consultationId,
+        providerId,
+        reason: !shouldSendSMS(provider.users.notification_preferences)
+          ? "User preference does not allow SMS"
+          : !provider.users.phone_number
+          ? "Provider has no phone number"
+          : "Unknown reason",
+        preference: provider.users.notification_preferences,
+        hasPhoneNumber: !!provider.users.phone_number,
+      });
     }
 
-    // Send email notification
-    if (provider.users.email) {
+    // Send email notification (respect user preferences)
+    if (
+      shouldSendEmail(provider.users.notification_preferences) &&
+      provider.users.email
+    ) {
       try {
-        if (consultation.scheduled_at) {
-          await emailService.sendConsultationConfirmedEmail(
-            provider.users.email,
-            patientName,
-            consultationType,
-            consultation.scheduled_at,
-            consultationId
-          );
-        }
-        // For booking notifications without scheduled_at, we can send a simpler email
+        await emailService.sendProviderBookingEmail(
+          provider.users.email,
+          patientName,
+          consultationType,
+          consultation.scheduled_at,
+          consultationId
+        );
       } catch (emailError) {
         console.error("Error sending email notification:", emailError);
         // Don't throw - email failures are non-critical
@@ -169,25 +221,76 @@ export async function notifyPatientAcceptance(
         ? "Voice Call"
         : "SMS Consultation";
 
-    // Send SMS confirmation
-    if (patient.phone_number && consultation.scheduled_at) {
-      await smsService.sendPatientConfirmation(
+    // Send SMS confirmation (respect user preferences)
+    if (
+      shouldSendSMS(patient.notification_preferences) &&
+      patient.phone_number &&
+      consultation.scheduled_at
+    ) {
+      const smsResult = await smsService.sendPatientConfirmation(
         patient.phone_number,
         providerName,
         consultationType,
         consultation.scheduled_at
       );
-    } else if (patient.phone_number) {
+      
+      if (!smsResult.success) {
+        console.error("SMS notification failed for patient confirmation:", {
+          consultationId,
+          patientId,
+          phoneNumber: patient.phone_number,
+          error: smsResult.error,
+        });
+      } else {
+        console.log("SMS notification sent successfully (patient confirmation):", {
+          consultationId,
+          messageId: smsResult.messageId,
+        });
+      }
+    } else if (
+      shouldSendSMS(patient.notification_preferences) &&
+      patient.phone_number
+    ) {
       // If no scheduled_at, send a simplified confirmation
       const message = `Consultation Confirmed\n\nProvider: ${providerName}\nType: ${consultationType}\n\nYour consultation has been confirmed. You will receive scheduling details soon.`;
-      await smsService.sendSMS({
+      const smsResult = await smsService.sendSMS({
         to: patient.phone_number,
         message,
       });
+      
+      if (!smsResult.success) {
+        console.error("SMS notification failed (confirmation, no scheduled_at):", {
+          consultationId,
+          patientId,
+          phoneNumber: patient.phone_number,
+          error: smsResult.error,
+        });
+      } else {
+        console.log("SMS notification sent successfully (confirmation, no scheduled_at):", {
+          consultationId,
+          messageId: smsResult.messageId,
+        });
+      }
+    } else {
+      console.log("SMS not sent for patient confirmation:", {
+        consultationId,
+        patientId,
+        reason: !shouldSendSMS(patient.notification_preferences)
+          ? "User preference does not allow SMS"
+          : !patient.phone_number
+          ? "Patient has no phone number"
+          : "No scheduled_at and preference check failed",
+        preference: patient.notification_preferences,
+        hasPhoneNumber: !!patient.phone_number,
+      });
     }
 
-    // Send email notification
-    if (patient.email && consultation.scheduled_at) {
+    // Send email notification (respect user preferences)
+    if (
+      shouldSendEmail(patient.notification_preferences) &&
+      patient.email &&
+      consultation.scheduled_at
+    ) {
       try {
         await emailService.sendConsultationConfirmedEmail(
           patient.email,
@@ -219,10 +322,10 @@ export async function notifyPatientAssignment(
   try {
     const adminClient = getAdminClient();
 
-    // Get patient details
+    // Get patient details with notification preferences
     const { data: patient } = await adminClient
       .from("users")
-      .select("id, full_name, phone_number, email")
+      .select("id, full_name, phone_number, email, notification_preferences")
       .eq("id", patientId)
       .single();
 
@@ -274,18 +377,47 @@ export async function notifyPatientAssignment(
       });
     }
 
-    // Send SMS notification
-    if (patient.phone_number) {
-      await smsService.sendPatientAssignmentNotification(
+    // Send SMS notification (respect user preferences)
+    if (
+      shouldSendSMS(patient.notification_preferences) &&
+      patient.phone_number
+    ) {
+      const smsResult = await smsService.sendPatientAssignmentNotification(
         patient.phone_number,
         providerName,
         consultationType,
         scheduledDate
       );
+      
+      if (!smsResult.success) {
+        console.error("SMS notification failed for patient assignment:", {
+          consultationId,
+          patientId,
+          phoneNumber: patient.phone_number,
+          error: smsResult.error,
+        });
+      } else {
+        console.log("SMS notification sent successfully (patient assignment):", {
+          consultationId,
+          messageId: smsResult.messageId,
+        });
+      }
+    } else {
+      console.log("SMS not sent for patient assignment:", {
+        consultationId,
+        patientId,
+        reason: !shouldSendSMS(patient.notification_preferences)
+          ? "User preference does not allow SMS"
+          : !patient.phone_number
+          ? "Patient has no phone number"
+          : "Unknown reason",
+        preference: patient.notification_preferences,
+        hasPhoneNumber: !!patient.phone_number,
+      });
     }
 
-    // Send email notification
-    if (patient.email) {
+    // Send email notification (respect user preferences)
+    if (shouldSendEmail(patient.notification_preferences) && patient.email) {
       try {
         await emailService.sendConsultationAssignedEmail(
           patient.email,
@@ -318,10 +450,10 @@ export async function notifyPaymentConfirmation(
   try {
     const adminClient = getAdminClient();
 
-    // Get patient details
+    // Get patient details with notification preferences
     const { data: patient } = await adminClient
       .from("users")
-      .select("id, full_name, phone_number, email")
+      .select("id, full_name, phone_number, email, notification_preferences")
       .eq("id", patientId)
       .single();
 
@@ -349,17 +481,48 @@ export async function notifyPaymentConfirmation(
         ? "Voice Call"
         : "SMS Consultation";
 
-    // Send SMS confirmation
-    if (patient.phone_number) {
-      await smsService.sendPaymentConfirmation(
+    // Send SMS confirmation (respect user preferences)
+    if (
+      shouldSendSMS(patient.notification_preferences) &&
+      patient.phone_number
+    ) {
+      const smsResult = await smsService.sendPaymentConfirmation(
         patient.phone_number,
         amount,
         consultationType
       );
+      
+      if (!smsResult.success) {
+        console.error("SMS notification failed for payment confirmation:", {
+          consultationId,
+          patientId,
+          amount,
+          phoneNumber: patient.phone_number,
+          error: smsResult.error,
+        });
+      } else {
+        console.log("SMS notification sent successfully (payment confirmation):", {
+          consultationId,
+          amount,
+          messageId: smsResult.messageId,
+        });
+      }
+    } else {
+      console.log("SMS not sent for payment confirmation:", {
+        consultationId,
+        patientId,
+        reason: !shouldSendSMS(patient.notification_preferences)
+          ? "User preference does not allow SMS"
+          : !patient.phone_number
+          ? "Patient has no phone number"
+          : "Unknown reason",
+        preference: patient.notification_preferences,
+        hasPhoneNumber: !!patient.phone_number,
+      });
     }
 
-    // Send email notification
-    if (patient.email) {
+    // Send email notification (respect user preferences)
+    if (shouldSendEmail(patient.notification_preferences) && patient.email) {
       try {
         await emailService.sendPaymentConfirmationEmail(
           patient.email,
@@ -389,10 +552,10 @@ export async function notifyConsultationReminder(
   try {
     const adminClient = getAdminClient();
 
-    // Get user details
+    // Get user details with notification preferences
     const { data: user } = await adminClient
       .from("users")
-      .select("id, full_name, phone_number, email")
+      .select("id, full_name, phone_number, email, notification_preferences")
       .eq("id", userId)
       .single();
 
@@ -435,8 +598,11 @@ export async function notifyConsultationReminder(
         ? "Voice Call"
         : "SMS Consultation";
 
-    // Send email reminder
-    if (user.email) {
+    // Send email reminder (respect user preferences)
+    if (
+      shouldSendEmail(user.notification_preferences) &&
+      user.email
+    ) {
       try {
         await emailService.sendConsultationReminderEmail(
           user.email,
@@ -451,22 +617,52 @@ export async function notifyConsultationReminder(
       }
     }
 
-    // Send SMS reminder
-    if (user.phone_number) {
+    // Send SMS reminder (respect user preferences)
+    if (
+      shouldSendSMS(user.notification_preferences) &&
+      user.phone_number
+    ) {
       try {
         const scheduledDate = new Date(consultation.scheduled_at).toLocaleString("en-US", {
           dateStyle: "medium",
           timeStyle: "short",
         });
         const message = `Consultation Reminder\n\nProvider: ${providerName}\nType: ${consultationType}\nScheduled: ${scheduledDate}\n\nPlease join on time.`;
-        await smsService.sendSMS({
+        const smsResult = await smsService.sendSMS({
           to: user.phone_number,
           message,
         });
+        
+        if (!smsResult.success) {
+          console.error("SMS reminder failed:", {
+            consultationId,
+            userId,
+            recipientType,
+            phoneNumber: user.phone_number,
+            error: smsResult.error,
+          });
+        } else {
+          console.log("SMS reminder sent successfully:", {
+            consultationId,
+            messageId: smsResult.messageId,
+          });
+        }
       } catch (smsError) {
         console.error("Error sending SMS reminder:", smsError);
         // Don't throw - SMS failures are non-critical
       }
+    } else {
+      console.log("SMS reminder not sent:", {
+        consultationId,
+        userId,
+        reason: !shouldSendSMS(user.notification_preferences)
+          ? "User preference does not allow SMS"
+          : !user.phone_number
+          ? "User has no phone number"
+          : "Unknown reason",
+        preference: user.notification_preferences,
+        hasPhoneNumber: !!user.phone_number,
+      });
     }
   } catch (error) {
     console.error("Error sending consultation reminder:", error);

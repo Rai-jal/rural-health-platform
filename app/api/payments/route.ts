@@ -199,6 +199,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // Send payment confirmation notification immediately
+    // This ensures users get confirmation even if webhook hasn't updated status yet
+    if (payment && payment.consultations) {
+      try {
+        const { notifyPaymentConfirmation } = await import("@/lib/notifications");
+        await notifyPaymentConfirmation(
+          payment.consultations.id,
+          user.id,
+          payment.amount_leone
+        );
+        console.log("✅ Payment confirmation notification sent on payment creation");
+      } catch (notifError) {
+        console.error("Error sending payment confirmation notification:", notifError);
+        // Don't fail the payment creation if notification fails
+      }
+    }
+
     // Return payment with gateway response
     // Include payment link for redirect-based payments (card payments)
     return NextResponse.json(

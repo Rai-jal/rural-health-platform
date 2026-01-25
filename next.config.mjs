@@ -1,5 +1,9 @@
 const nextConfig = {
   // Build errors are now properly handled - fix any TypeScript/ESLint errors
+  // Enable instrumentation hook for Sentry
+  experimental: {
+    instrumentationHook: true,
+  },
   images: {
     domains: ['placeholder.svg'],
     unoptimized: true,

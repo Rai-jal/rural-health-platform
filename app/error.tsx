@@ -5,6 +5,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle } from 'lucide-react'
 
+// Optional Sentry import - app works even if Sentry isn't installed
+let Sentry: any = null
+try {
+  Sentry = require('@sentry/nextjs')
+} catch (e) {
+  // Sentry not installed - that's okay
+  console.warn('Sentry not available - error tracking disabled')
+}
+
 export default function Error({
   error,
   reset,
@@ -13,8 +22,25 @@ export default function Error({
   reset: () => void
 }) {
   useEffect(() => {
-    // Log the error to an error reporting service
-    console.error('Application error:', error)
+    // Capture error with Sentry (if available)
+    if (Sentry?.captureException) {
+      Sentry.captureException(error, {
+        tags: {
+          errorBoundary: 'root',
+          component: 'app-error',
+        },
+        contexts: {
+          error: {
+            digest: error.digest,
+          },
+        },
+      })
+    } else {
+      // Fallback: log to console in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error caught by error boundary:', error)
+      }
+    }
   }, [error])
 
   return (

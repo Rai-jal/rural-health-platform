@@ -32,7 +32,8 @@ interface PatientStats {
   totalConsultations: number;
   recentConsultations: Array<{
     id: string;
-    scheduled_at: string;
+    scheduled_at: string | null;
+    preferred_date: string | null;
     consultation_type: string;
     status: string;
     cost_leone: number;
@@ -40,7 +41,13 @@ interface PatientStats {
       id: string;
       full_name: string;
       specialty: string;
-    };
+    } | null;
+    payments?: Array<{
+      id: string;
+      payment_status: string;
+      amount_leone: number;
+      payment_method: string;
+    }>;
   }>;
 }
 
@@ -95,16 +102,14 @@ export default function DashboardPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-SL", {
-      style: "currency",
-      currency: "SLL",
+    return `Le ${amount.toLocaleString("en-US", {
       minimumFractionDigits: 0,
-    })
-      .format(amount)
-      .replace("SLL", "Le");
+      maximumFractionDigits: 0,
+    })}`;
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Date TBD";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       month: "short",
@@ -257,12 +262,36 @@ export default function DashboardPage() {
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {consultation.healthcare_providers?.specialty} •{" "}
-                            {formatDate(consultation.scheduled_at)}
+                            {consultation.healthcare_providers?.specialty || "No provider assigned"} •{" "}
+                            {consultation.scheduled_at 
+                              ? formatDate(consultation.scheduled_at)
+                              : consultation.preferred_date
+                              ? formatDate(consultation.preferred_date) + " (preferred)"
+                              : "Date TBD"}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatCurrency(consultation.cost_leone)}
-                          </p>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-xs text-muted-foreground">
+                              {formatCurrency(consultation.cost_leone)}
+                            </p>
+                            {consultation.payments && consultation.payments.length > 0 && (
+                              <Badge 
+                                variant={
+                                  consultation.payments[0].payment_status === "completed"
+                                    ? "default"
+                                    : consultation.payments[0].payment_status === "pending"
+                                    ? "secondary"
+                                    : "outline"
+                                }
+                                className="text-xs"
+                              >
+                                {consultation.payments[0].payment_status === "completed"
+                                  ? "Paid"
+                                  : consultation.payments[0].payment_status === "pending"
+                                  ? "Payment Pending"
+                                  : "Unpaid"}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <Badge
                           variant={

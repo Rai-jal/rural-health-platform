@@ -74,15 +74,12 @@ export default function AdminDashboard() {
     }
   };
 
-  // Format currency
+  // Format currency in Leone (Le)
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-SL", {
-      style: "currency",
-      currency: "SLL",
+    return `Le ${amount.toLocaleString("en-US", {
       minimumFractionDigits: 0,
-    })
-      .format(amount)
-      .replace("SLL", "Le");
+      maximumFractionDigits: 0,
+    })}`;
   };
 
   if (authLoading || isLoading) {
@@ -177,8 +174,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center text-sm text-muted-foreground">
-                <DollarSign className="h-4 w-4 mr-1" />
-                <span>Total payments received</span>
+                <span>Le Total payments received</span>
               </div>
             </CardContent>
           </Card>

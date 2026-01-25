@@ -184,6 +184,9 @@ export default function ConsultationPage() {
         preferred_time_range: formData.preferred_time_range || undefined,
         reason_for_consultation: formData.reason_for_consultation || undefined,
         consent_acknowledged: formData.consent_acknowledged,
+        // ✅ FIX: Send phone number and name to save to user profile
+        patient_phone: formData.patient_phone,
+        patient_name: formData.patient_name,
       });
 
       if (apiError || !data) {

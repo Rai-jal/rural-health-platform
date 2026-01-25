@@ -25,6 +25,7 @@ export interface User {
   age?: number
   preferred_language: string
   location?: string
+  notification_preferences?: "sms" | "email" | "both" // Default: 'sms' (backward compatible)
   created_at: string
   updated_at: string
 }

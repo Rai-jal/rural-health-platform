@@ -17,6 +17,8 @@ import { Save, Loader2, Stethoscope, Star } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/components/ui/toast";
 import { DoctorHeader } from "@/components/doctor-header";
+import type { NotificationPreference } from "@/lib/types/auth";
+import { NotificationPreferences } from "@/components/notification-preferences";
 
 interface ProviderProfile {
   id: string;
@@ -45,6 +47,8 @@ export default function DoctorProfilePage() {
     location: "",
     is_available: true,
   });
+  const [notificationPreference, setNotificationPreference] =
+    useState<NotificationPreference>("sms");
 
   useEffect(() => {
     if (!authLoading && (!isLoggedIn || user?.role !== "Doctor")) {
@@ -76,6 +80,10 @@ export default function DoctorProfilePage() {
           is_available: data.provider.is_available ?? true,
         });
       }
+      // Get user notification preferences
+      if (data.user?.notification_preferences) {
+        setNotificationPreference(data.user.notification_preferences);
+      }
     } catch (err) {
       console.error("Error fetching profile:", err);
       addToast({
@@ -97,6 +105,7 @@ export default function DoctorProfilePage() {
           .split(",")
           .map((l) => l.trim())
           .filter(Boolean),
+        notification_preferences: notificationPreference,
       };
 
       const response = await fetch("/api/doctor/profile", {
@@ -310,6 +319,14 @@ export default function DoctorProfilePage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Notification Preferences */}
+        <div className="md:col-span-3">
+          <NotificationPreferences
+            value={notificationPreference}
+            onChange={setNotificationPreference}
+          />
+        </div>
       </div>
     </div>
   );

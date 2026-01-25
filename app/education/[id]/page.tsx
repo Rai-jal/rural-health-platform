@@ -131,12 +131,86 @@ export default function EducationContentPage() {
     if (!content) return;
     
     try {
-      const result = await incrementDownloadCount(content.id);
-      if (result) {
+      // Determine which file to download based on content type
+      let fileUrl: string | null = null;
+      let fileName: string = content.title;
+
+      if (content.content_type === "audio" && content.audio_url) {
+        fileUrl = content.audio_url;
+        fileName = `${content.title}.mp3`;
+      } else if (content.content_type === "video" && content.video_url) {
+        fileUrl = content.video_url;
+        fileName = `${content.title}.mp4`;
+      } else if (content.content_type === "article" && content.content_text) {
+        // For articles, create a text file from content_text
+        const blob = new Blob([content.content_text], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${content.title}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        // Increment download count
+        const result = await incrementDownloadCount(content.id);
+        if (result) {
+          setContent({ ...content, download_count: result.download_count });
+        }
+
         addToast({
           type: "success",
           title: "Downloaded",
           description: "Content downloaded successfully!",
+        });
+        return;
+      }
+
+      // If no file URL available, show error
+      if (!fileUrl) {
+        addToast({
+          type: "error",
+          title: "Download Failed",
+          description: "No file available for download.",
+        });
+        return;
+      }
+
+      // Download the file
+      try {
+        const response = await fetch(fileUrl);
+        if (!response.ok) {
+          throw new Error("Failed to fetch file");
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        // Increment download count
+        const result = await incrementDownloadCount(content.id);
+        if (result) {
+          setContent({ ...content, download_count: result.download_count });
+        }
+
+        addToast({
+          type: "success",
+          title: "Downloaded",
+          description: "Content downloaded successfully!",
+        });
+      } catch (downloadError) {
+        console.error("Error downloading file:", downloadError);
+        addToast({
+          type: "error",
+          title: "Download Failed",
+          description: "Failed to download file. Please check the file URL.",
         });
       }
     } catch (error) {

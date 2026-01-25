@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/components/ui/toast";
 import { AdminHeader } from "@/components/admin-header";
+import type { NotificationPreference } from "@/lib/types/auth";
+import { NotificationPreferences } from "@/components/notification-preferences";
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
@@ -26,6 +28,7 @@ export default function ProfileSettingsPage() {
     full_name: "",
     phone_number: "",
     location: "",
+    notification_preferences: "sms" as NotificationPreference,
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -42,6 +45,7 @@ export default function ProfileSettingsPage() {
         full_name: user.full_name || "",
         phone_number: user.phone_number || "",
         location: user.location || "",
+        notification_preferences: (user.notification_preferences || "sms") as NotificationPreference,
       });
     }
   }, [authLoading, isLoggedIn, user, router]);
@@ -206,6 +210,16 @@ export default function ProfileSettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Notification Preferences */}
+        <div className="md:col-span-3">
+          <NotificationPreferences
+            value={formData.notification_preferences}
+            onChange={(value) =>
+              setFormData({ ...formData, notification_preferences: value })
+            }
+          />
+        </div>
       </div>
     </div>
   );

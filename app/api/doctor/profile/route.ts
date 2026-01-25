@@ -10,6 +10,7 @@ const updateProviderSchema = z.object({
   experience_years: z.number().int().min(0).optional(),
   location: z.string().optional(),
   is_available: z.boolean().optional(),
+  notification_preferences: z.enum(['sms', 'email', 'both']).optional(),
 });
 
 // GET - Get doctor's provider profile
@@ -35,10 +36,10 @@ export async function GET() {
 
     if (providerError) {
       // Provider profile doesn't exist, return null
-      return NextResponse.json({ provider: null });
+      return NextResponse.json({ provider: null, user: profile });
     }
 
-    return NextResponse.json({ provider });
+    return NextResponse.json({ provider, user: profile });
   } catch (error) {
     console.error("Error fetching provider profile:", error);
     return NextResponse.json(
@@ -114,6 +115,22 @@ export async function PATCH(request: Request) {
       }
 
       provider = newProvider;
+    }
+
+    // Update user notification preferences if provided
+    if (validatedData.notification_preferences !== undefined) {
+      const { error: userUpdateError } = await supabase
+        .from("users")
+        .update({
+          notification_preferences: validatedData.notification_preferences,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (userUpdateError) {
+        console.error("Error updating notification preferences:", userUpdateError);
+        // Don't fail the request if notification preference update fails
+      }
     }
 
     return NextResponse.json({ provider });

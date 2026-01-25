@@ -9,6 +9,7 @@ const updateProfileSchema = z.object({
   location: z.string().optional(),
   age: z.number().int().positive().optional(),
   preferred_language: z.string().optional(),
+  notification_preferences: z.enum(['sms', 'email', 'both']).optional(),
 });
 
 // GET - Get admin's own profile

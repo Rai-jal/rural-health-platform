@@ -18,6 +18,9 @@ export const createConsultationRequestSchema = z.object({
   consent_acknowledged: z.boolean().refine((val) => val === true, {
     message: "You must acknowledge consent to continue",
   }),
+  // ✅ FIX: Add patient_phone and patient_name to schema
+  patient_phone: z.string().optional(),
+  patient_name: z.string().optional(),
 });
 
 export type CreateConsultationRequestInput = z.infer<typeof createConsultationRequestSchema>;

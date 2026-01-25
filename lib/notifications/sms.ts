@@ -33,6 +33,28 @@ export class SMSService {
   }
 
   /**
+   * Validate phone number format
+   * Must start with + and have country code (e.g., +232123456789)
+   */
+  private validatePhoneNumber(phone: string): { valid: boolean; error?: string } {
+    if (!phone) {
+      return { valid: false, error: "Phone number is required" };
+    }
+    
+    // Must start with + and have country code + number (10-15 digits total)
+    const phoneRegex = /^\+[1-9]\d{10,14}$/;
+    
+    if (!phoneRegex.test(phone)) {
+      return {
+        valid: false,
+        error: `Invalid phone number format. Expected: +232XXXXXXXXX (with country code), got: ${phone}`,
+      };
+    }
+    
+    return { valid: true };
+  }
+
+  /**
    * Send SMS via Twilio
    */
   async sendSMS(options: SMSOptions): Promise<SMSResponse> {
@@ -45,6 +67,16 @@ export class SMSService {
       return {
         success: false,
         error: "SMS service not configured",
+      };
+    }
+
+    // Validate phone number format
+    const phoneValidation = this.validatePhoneNumber(options.to);
+    if (!phoneValidation.valid) {
+      console.error("Invalid phone number:", phoneValidation.error);
+      return {
+        success: false,
+        error: phoneValidation.error,
       };
     }
 
@@ -71,12 +103,35 @@ export class SMSService {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("Twilio SMS error:", data);
+        console.error("Twilio SMS API error:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: data,
+          phoneNumber: options.to,
+          message: options.message.substring(0, 50) + "...",
+        });
+        
+        // Check for common Twilio errors
+        let errorMessage = data.message || "Failed to send SMS";
+        if (data.code === 21211) {
+          errorMessage = "Invalid phone number format";
+        } else if (data.code === 21408) {
+          errorMessage = "Phone number not verified (trial account restriction)";
+        } else if (data.code === 21608) {
+          errorMessage = "Unsubscribed recipient";
+        }
+        
         return {
           success: false,
-          error: data.message || "Failed to send SMS",
+          error: errorMessage,
         };
       }
+
+      console.log("SMS sent successfully via Twilio:", {
+        messageId: data.sid,
+        phoneNumber: options.to,
+        status: data.status,
+      });
 
       return {
         success: true,

@@ -59,13 +59,85 @@ export async function POST(
       );
     }
 
-    // TODO: Integrate with payment gateway API to process actual refund
-    // This is a placeholder - implement actual refund logic based on payment_provider
+    // Process actual refund via Flutterwave API
+    if (payment.payment_provider === "flutterwave" && payment.transaction_id) {
+      try {
+        const { paymentGateway } = await import("@/lib/payment/gateway");
+        
+        // Process refund through Flutterwave
+        const refundResult = await paymentGateway.refundPayment(
+          payment.transaction_id,
+          payment.amount_leone // Full refund by default
+        );
 
-    return NextResponse.json({
-      payment: updatedPayment,
-      message: "Refund processed successfully",
-    });
+        if (!refundResult.success) {
+          // Refund failed at gateway, but we already updated DB
+          // Rollback the database update
+          await supabase
+            .from("payments")
+            .update({
+              payment_status: "completed", // Revert to completed
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", params.id);
+
+          return NextResponse.json(
+            {
+              error: "Refund failed at payment gateway",
+              details: refundResult.error || refundResult.message,
+            },
+            { status: 400 }
+          );
+        }
+
+        console.log("✅ Refund processed successfully:", {
+          paymentId: updatedPayment.id,
+          refundId: refundResult.refundId,
+          amount: payment.amount_leone,
+        });
+
+        return NextResponse.json({
+          payment: updatedPayment,
+          refund: {
+            refundId: refundResult.refundId,
+            message: refundResult.message,
+          },
+          message: "Refund processed successfully",
+        });
+      } catch (refundError) {
+        console.error("❌ Error processing refund via gateway:", refundError);
+
+        // Rollback database update
+        await supabase
+          .from("payments")
+          .update({
+            payment_status: "completed",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", params.id);
+
+        return NextResponse.json(
+          {
+            error: "Failed to process refund via payment gateway",
+            details: refundError instanceof Error ? refundError.message : "Unknown error",
+          },
+          { status: 500 }
+        );
+      }
+    } else {
+      // For non-Flutterwave payments or missing transaction_id, just update database
+      console.warn("⚠️  Refund processed (database only):", {
+        paymentId: updatedPayment.id,
+        provider: payment.payment_provider,
+        hasTransactionId: !!payment.transaction_id,
+      });
+
+      return NextResponse.json({
+        payment: updatedPayment,
+        message: "Refund status updated (database only - no gateway integration)",
+        warning: "Payment gateway refund not processed. Manual refund may be required.",
+      });
+    }
   } catch (error) {
     console.error("Error processing refund:", error);
     return NextResponse.json(

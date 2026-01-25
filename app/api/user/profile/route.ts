@@ -7,6 +7,7 @@ const updateProfileSchema = z.object({
   full_name: z.string().min(1).optional(),
   phone_number: z.string().optional(),
   location: z.string().optional(),
+  notification_preferences: z.enum(['sms', 'email', 'both']).optional(),
 });
 
 // GET - Get current user's profile

@@ -126,6 +126,49 @@ export async function POST(request: Request) {
 
       const cost_leone = consultationPricing[validatedData.consultation_type];
 
+      // ✅ FIX: Update user profile with phone number and name if provided in consultation form
+      // This ensures phone numbers from consultation booking are saved
+      if (validatedData.patient_phone || validatedData.patient_name) {
+        const updateData: { phone_number?: string; full_name?: string; updated_at: string } = {
+          updated_at: new Date().toISOString(),
+        };
+
+        // Format and add phone number if provided
+        if (validatedData.patient_phone) {
+          let formattedPhone = validatedData.patient_phone.trim();
+          if (!formattedPhone.startsWith("+")) {
+            // Assume Sierra Leone if no country code
+            if (formattedPhone.match(/^[0-9]{9}$/)) {
+              formattedPhone = `+232${formattedPhone}`;
+            } else if (formattedPhone.match(/^232[0-9]{9}$/)) {
+              formattedPhone = `+${formattedPhone}`;
+            }
+          }
+          updateData.phone_number = formattedPhone;
+        }
+
+        // Add name if provided
+        if (validatedData.patient_name) {
+          updateData.full_name = validatedData.patient_name;
+        }
+
+        // Update user profile
+        const { error: updateError } = await supabase
+          .from("users")
+          .update(updateData)
+          .eq("id", user.id);
+
+        if (updateError) {
+          console.warn("Failed to update user profile:", updateError);
+          // Don't fail the consultation creation if profile update fails
+        } else {
+          console.log("✅ User profile updated from consultation form:", {
+            phoneUpdated: !!validatedData.patient_phone,
+            nameUpdated: !!validatedData.patient_name,
+          });
+        }
+      }
+
       // Create consultation request
       const { data: consultation, error: consultationError } = await supabase
         .from("consultations")

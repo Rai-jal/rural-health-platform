@@ -2,6 +2,14 @@
 
 import { Component, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+
+// Optional Sentry import - app works even if Sentry isn't installed
+let Sentry: any = null
+try {
+  Sentry = require("@sentry/nextjs")
+} catch (e) {
+  // Sentry not installed - that's okay
+}
 import {
   Card,
   CardContent,
@@ -14,6 +22,8 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  boundaryName?: string; // Name for identifying which boundary caught the error
+  showErrorDetails?: boolean; // Whether to show error details to user
 }
 
 interface State {
@@ -32,7 +42,28 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    // Capture error with Sentry (if available)
+    if (Sentry?.captureException) {
+      Sentry.captureException(error, {
+        tags: {
+          errorBoundary: this.props.boundaryName || "unknown",
+          component: "ErrorBoundary",
+        },
+        contexts: {
+          react: {
+            componentStack: errorInfo.componentStack,
+          },
+        },
+        extra: {
+          errorInfo,
+        },
+      });
+    }
+
+    // Also log to console in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("ErrorBoundary caught an error:", error, errorInfo);
+    }
   }
 
   handleReset = () => {
@@ -58,11 +89,16 @@ export class ErrorBoundary extends Component<Props, State> {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {this.state.error && (
+              {this.state.error && this.props.showErrorDetails && (
                 <div className="bg-gray-50 p-3 rounded text-sm">
                   <p className="font-medium text-gray-700">Error details:</p>
                   <p className="text-gray-600 mt-1">{this.state.error.message}</p>
                 </div>
+              )}
+              {!this.props.showErrorDetails && (
+                <p className="text-sm text-muted-foreground">
+                  The error has been reported and our team has been notified.
+                </p>
               )}
               <div className="flex gap-2">
                 <Button onClick={this.handleReset} className="flex-1">

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { PatientSidebar } from "@/components/patient-sidebar";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 export default function DashboardLayout({
   children,
@@ -47,7 +48,9 @@ export default function DashboardLayout({
             <Menu className="h-5 w-5" />
           </Button>
         </div>
-        {children}
+        <ErrorBoundary boundaryName="dashboard-layout" showErrorDetails={false}>
+          {children}
+        </ErrorBoundary>
       </main>
     </div>
   );
