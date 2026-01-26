@@ -213,6 +213,20 @@ export async function POST(request: Request) {
       } catch (notifError) {
         console.error("Error sending payment confirmation notification:", notifError);
         // Don't fail the payment creation if notification fails
+        
+        // Send admin alert if notification fails
+        try {
+          const { alertSystemError } = await import("@/lib/notifications/admin-alerts");
+          await alertSystemError(
+            "Payment Notification Failed",
+            `Failed to send payment confirmation for payment ${payment.id}`,
+            "/api/payments",
+            notifError instanceof Error ? notifError.stack : undefined
+          );
+        } catch (alertError) {
+          // Don't fail if admin alert fails
+          console.error("Failed to send admin alert:", alertError);
+        }
       }
     }
 

@@ -62,6 +62,18 @@ export async function POST(request: Request) {
         gateway: "flutterwave",
       });
       
+      // Send admin alert for webhook verification failure
+      try {
+        const { alertWebhookFailed } = await import("@/lib/notifications/admin-alerts");
+        await alertWebhookFailed(
+          "Flutterwave",
+          verification.reference || "unknown",
+          "Webhook signature verification failed"
+        );
+      } catch (alertError) {
+        console.error("Failed to send admin alert:", alertError);
+      }
+      
       return NextResponse.json(
         { error: "Webhook verification failed - invalid signature" },
         { status: 401 }

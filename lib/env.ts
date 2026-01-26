@@ -9,6 +9,11 @@ const envSchema = z.object({
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_PHONE_NUMBER: z.string().optional(),
+  // Africa's Talking SMS Configuration (for Sierra Leone - +232)
+  AFRICAS_TALKING_USERNAME: z.string().optional(),
+  AFRICAS_TALKING_API_KEY: z.string().optional(),
+  AFRICAS_TALKING_MODE: z.enum(['sandbox', 'production']).optional(),
+  SMS_SENDER_ID: z.string().optional(),
   // Twilio Video/Voice Configuration (optional)
   TWILIO_API_KEY: z.string().optional(),
   TWILIO_API_SECRET: z.string().optional(),
@@ -53,6 +58,11 @@ function getEnv() {
       TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER,
       TWILIO_API_KEY: process.env.TWILIO_API_KEY,
       TWILIO_API_SECRET: process.env.TWILIO_API_SECRET,
+      // Africa's Talking configuration
+      AFRICAS_TALKING_USERNAME: process.env.AFRICAS_TALKING_USERNAME,
+      AFRICAS_TALKING_API_KEY: process.env.AFRICAS_TALKING_API_KEY,
+      AFRICAS_TALKING_MODE: process.env.AFRICAS_TALKING_MODE,
+      SMS_SENDER_ID: process.env.SMS_SENDER_ID,
       // Email configuration
       SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
       SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL,

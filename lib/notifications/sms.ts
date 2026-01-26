@@ -1,7 +1,11 @@
 /**
  * SMS Notification Service
- * Handles sending SMS notifications via Twilio or other SMS providers
+ * Handles sending SMS notifications via Twilio or Africa's Talking
+ * Automatically routes Sierra Leone numbers (+232) to Africa's Talking
+ * Routes other numbers to Twilio (if configured)
  */
+
+import { africasTalkingSMSService } from "./africas-talking";
 
 interface SMSOptions {
   to: string;
@@ -13,23 +17,46 @@ interface SMSResponse {
   success: boolean;
   messageId?: string;
   error?: string;
+  provider?: "africas-talking" | "twilio";
 }
 
 export class SMSService {
   private twilioAccountSid: string | undefined;
   private twilioAuthToken: string | undefined;
   private twilioPhoneNumber: string | undefined;
-  private enabled: boolean;
+  private twilioEnabled: boolean;
 
   constructor() {
     this.twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
     this.twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
     this.twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
-    this.enabled = !!(
+    this.twilioEnabled = !!(
       this.twilioAccountSid &&
       this.twilioAuthToken &&
       this.twilioPhoneNumber
     );
+  }
+
+  /**
+   * Check if phone number is a Sierra Leone number (+232)
+   */
+  private isSierraLeoneNumber(phone: string): boolean {
+    // Normalize phone number
+    let cleaned = phone.replace(/[\s\-\(\)]/g, "");
+    
+    // Check if it starts with +232 or can be normalized to +232
+    if (cleaned.startsWith("+232")) {
+      return true;
+    }
+    if (cleaned.startsWith("232") && !cleaned.startsWith("+232")) {
+      return true;
+    }
+    if (cleaned.startsWith("0")) {
+      // Likely Sierra Leone local format
+      return true;
+    }
+    
+    return false;
   }
 
   /**
@@ -55,28 +82,53 @@ export class SMSService {
   }
 
   /**
-   * Send SMS via Twilio
+   * Send SMS - automatically routes to appropriate provider
+   * Sierra Leone numbers (+232) → Africa's Talking
+   * Other numbers → Twilio (if configured)
    */
   async sendSMS(options: SMSOptions): Promise<SMSResponse> {
-    if (!this.enabled) {
-      console.warn("SMS service not configured. Skipping SMS send.");
+    // Check if this is a Sierra Leone number
+    if (this.isSierraLeoneNumber(options.to)) {
+      // Route to Africa's Talking
+      console.log("Routing SMS to Africa's Talking (Sierra Leone number):", {
+        to: options.to,
+        messageType: options.message.substring(0, 30) + "...",
+      });
+
+      const result = await africasTalkingSMSService.sendSMS({
+        to: options.to,
+        message: options.message,
+        from: options.from,
+      });
+
+      return {
+        ...result,
+        provider: "africas-talking",
+      };
+    }
+
+    // For non-Sierra Leone numbers, use Twilio (if configured)
+    if (!this.twilioEnabled) {
+      console.warn("Twilio SMS service not configured. Skipping SMS send.");
       console.log("Would send SMS:", {
         to: options.to,
         message: options.message.substring(0, 50) + "...",
       });
       return {
         success: false,
-        error: "SMS service not configured",
+        error: "SMS service not configured for this country",
+        provider: undefined,
       };
     }
 
-    // Validate phone number format
+    // Validate phone number format for Twilio
     const phoneValidation = this.validatePhoneNumber(options.to);
     if (!phoneValidation.valid) {
       console.error("Invalid phone number:", phoneValidation.error);
       return {
         success: false,
         error: phoneValidation.error,
+        provider: undefined,
       };
     }
 
@@ -124,6 +176,7 @@ export class SMSService {
         return {
           success: false,
           error: errorMessage,
+          provider: "twilio",
         };
       }
 
@@ -136,12 +189,14 @@ export class SMSService {
       return {
         success: true,
         messageId: data.sid,
+        provider: "twilio",
       };
     } catch (error) {
-      console.error("Error sending SMS:", error);
+      console.error("Error sending SMS via Twilio:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
+        provider: "twilio",
       };
     }
   }

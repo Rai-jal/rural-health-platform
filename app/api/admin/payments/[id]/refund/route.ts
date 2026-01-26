@@ -96,6 +96,20 @@ export async function POST(
           amount: payment.amount_leone,
         });
 
+        // Send admin alert for refund
+        try {
+          const { alertPaymentRefunded } = await import("@/lib/notifications/admin-alerts");
+          await alertPaymentRefunded(
+            updatedPayment.id,
+            payment.user_id,
+            payment.amount_leone,
+            refundResult.refundId
+          );
+        } catch (alertError) {
+          console.error("Failed to send admin alert for refund:", alertError);
+          // Don't fail the refund if alert fails
+        }
+
         return NextResponse.json({
           payment: updatedPayment,
           refund: {

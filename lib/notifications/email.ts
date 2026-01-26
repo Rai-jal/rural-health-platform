@@ -149,10 +149,25 @@ export class EmailService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("SendGrid API error:", errorText);
+        let errorDetails = errorText;
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorDetails = errorJson.errors?.[0]?.message || errorJson.message || errorText;
+        } catch {
+          // If not JSON, use text as-is
+        }
+        
+        console.error("SendGrid API error:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorDetails,
+          fullResponse: errorText,
+        });
+        
         return {
           success: false,
-          error: `SendGrid API error: ${response.status}`,
+          error: `SendGrid API error: ${response.status} - ${errorDetails}`,
         };
       }
 
